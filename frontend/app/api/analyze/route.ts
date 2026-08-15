@@ -54,12 +54,17 @@ export async function POST(req: NextRequest) {
       }, 15 * 60 * 1000);
     });
 
-    // Parse JSON output from Python
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Could not parse scorecard JSON from backend output.');
+    // Parse JSON output from Python — find the outermost { ... } block
+    // Starting from the last '{' makes us resilient to any stray progress text
+    const firstBrace = result.indexOf('{');
+    const lastBrace  = result.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+      throw new Error(
+        `Backend returned no JSON.\n` +
+        `stdout: ${result.slice(0, 300)}`
+      );
     }
-    const scorecard = JSON.parse(jsonMatch[0]);
+    const scorecard = JSON.parse(result.slice(firstBrace, lastBrace + 1));
     return NextResponse.json(scorecard);
 
   } catch (e: unknown) {

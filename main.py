@@ -8,11 +8,17 @@ Usage:
 """
 
 import sys
+import io
 
 # ── Force UTF-8 output so non-ASCII characters (₹, é, ñ, etc.) never crash
 # the process on Windows where the default codepage is cp1252.
+# Primary fix (Python 3.7+): use reconfigure
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+# Fallback for older Python: wrap with TextIOWrapper
+elif sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import json
 import argparse
 import logging
@@ -186,8 +192,10 @@ def main():
     else:
         logging.getLogger().setLevel(logging.INFO)
 
-    print("\nAnalyzing article...")
-    print("  Step 1/4 — Extracting article text (trafilatura)...")
+    # In --json mode stdout must be pure JSON — send progress to stderr instead
+    _out = sys.stderr if args.json else sys.stdout
+    print("\nAnalyzing article...", file=_out)
+    print("  Step 1/4 — Extracting article text (trafilatura)...", file=_out)
 
     article_input = ArticleInput(
         url=args.url,
@@ -205,6 +213,8 @@ def main():
         sys.exit(1)
 
     if args.json:
+        # Flush the text layer first so buffered prints don't interleave with binary write
+        sys.stdout.flush()
         # Write raw UTF-8 bytes directly to stdout's binary buffer.
         # This bypasses Windows cp1252 entirely and avoids UnicodeEncodeError
         # for characters like ₹ (\u20b9), em-dashes, etc.

@@ -166,6 +166,31 @@ def print_scorecard(sc):
     else:
         print("  POSITIVE SIG : None detected")
 
+    # ── Image forensics ──────────────────────────────────────────────────
+    if sc.image_analysis:
+        ia = sc.image_analysis
+        print(f"\n{SEP}")
+        print("  IMAGE FORENSICS  (Deepfake detection — Xception + GradCAM)")
+        print(SEP2)
+        print(f"  Images Analyzed  : {ia.total_images_analyzed}")
+        print(f"  Fake Detected    : {ia.fake_images_detected}")
+        print(f"  Authenticity     : {ia.image_authenticity_score:.1f} / 100")
+
+        if ia.results:
+            print(f"\n  Per-Image Results:")
+            for r in ia.results:
+                tag = "FAKE" if r.verdict == "FAKE" else "REAL"
+                pct = f"{r.fake_probability * 100:.1f}%"
+                # Truncate long URLs
+                url_display = r.url if len(r.url) <= 60 else r.url[:57] + "..."
+                print(f"    [{tag:4s} {pct:>5s}] {url_display}")
+
+        if ia.flagged_images:
+            print(f"\n  Flagged (>60% fake probability):")
+            for url in ia.flagged_images:
+                url_display = url if len(url) <= 60 else url[:57] + "..."
+                print(f"    [!!] {url_display}")
+
     print(f"\n{SEP}\n")
 
 
@@ -195,7 +220,7 @@ def main():
     # In --json mode stdout must be pure JSON — send progress to stderr instead
     _out = sys.stderr if args.json else sys.stdout
     print("\nAnalyzing article...", file=_out)
-    print("  Step 1/4 — Extracting article text (trafilatura)...", file=_out)
+    print("  Step 1/5 — Extracting article text and images...", file=_out)
 
     article_input = ArticleInput(
         url=args.url,

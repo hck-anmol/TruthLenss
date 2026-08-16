@@ -2,9 +2,10 @@
 
 const STEPS = [
   { n: '01', label: 'Extracting content',       sub: 'Fetching and parsing article HTML via Trafilatura...' },
-  { n: '02', label: 'AI context analysis',       sub: 'qwen3:8b is extracting facts, claims and tone...' },
-  { n: '03', label: 'Live web corroboration',    sub: 'Tavily is searching 50+ trusted news sources...' },
-  { n: '04', label: 'Generating scorecard',      sub: 'Computing weighted credibility dimensions...' },
+  { n: '02', label: 'Scanning images',  sub: 'Analyzing article images for deepfakes with Xception + GradCAM...' },
+  { n: '03', label: 'AI context analysis',       sub: 'qwen3:8b is extracting facts, claims and tone...' },
+  { n: '04', label: 'Live web corroboration',    sub: 'Tavily is searching 50+ trusted news sources...' },
+  { n: '05', label: 'Generating scorecard',      sub: 'Computing weighted credibility dimensions...' },
 ];
 
 export default function LoadingSteps({ step }: { step: number }) {
@@ -52,10 +53,10 @@ export default function LoadingSteps({ step }: { step: number }) {
       <div className="mt-8 h-px w-full bg-[#E8E5DE] rounded-full overflow-hidden">
         <div
           className="h-full bg-[#1B3A6B] rounded-full transition-all duration-1000 ease-out"
-          style={{ width: `${(step / 4) * 100}%` }}
+          style={{ width: `${(step / 5) * 100}%` }}
         />
       </div>
-      <p className="text-xs text-[#A1A1AA] text-right mt-1.5">{step} of 4</p>
+      <p className="text-xs text-[#A1A1AA] text-right mt-1.5">{step} of 5</p>
     </div>
   );
 }

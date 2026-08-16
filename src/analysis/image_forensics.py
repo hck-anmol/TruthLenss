@@ -85,9 +85,22 @@ class DeepfakeImageAnalyzer:
             cls._instance = super(DeepfakeImageAnalyzer, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, model_path: str = "deepfake_detector/best_model.pth", max_images: int = 8):
+    def __init__(self, model_path: str = None, max_images: int = 8):
         if hasattr(self, '_initialized') and self._initialized:
             return
+
+        # Try multiple known model locations
+        if model_path is None:
+            for candidate in [
+                "deepfake_detector/models/best_model.pth",
+                "deepfake_detector/best_model.pth",
+                "best_model.pth",
+            ]:
+                if os.path.exists(candidate):
+                    model_path = candidate
+                    break
+            if model_path is None:
+                model_path = "deepfake_detector/models/best_model.pth"
             
         self.max_images = max_images
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

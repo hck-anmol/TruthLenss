@@ -43,6 +43,8 @@ class ArticleExtraction(BaseModel):
     uses_https: bool = False
     word_count: int = 0
     ad_profile: AdProfile = Field(default_factory=AdProfile)
+    # Image URLs extracted from the article HTML
+    image_urls: List[str] = Field(default_factory=list)
     # kept for legacy compatibility
     meta_keywords: List[str] = Field(default_factory=list)
     meta_description: Optional[str] = None
@@ -127,6 +129,35 @@ class CorroborationResult(BaseModel):
     search_queries_used: List[str] = Field(default_factory=list)
 
 
+# ── 5b. Image Analysis (deepfake detection) ────────────────────────────────
+
+class ImageResult(BaseModel):
+    """Result for a single analyzed image."""
+    url: str
+    fake_probability: float       # 0.0 (real) to 1.0 (fake)
+    verdict: str                  # "REAL" or "FAKE"
+    gradcam_base64: str = ""      # data:image/jpeg;base64,... heatmap overlay
+
+class ImageAnalysisResult(BaseModel):
+    """Aggregated results from deepfake detection across all article images."""
+    total_images_analyzed: int = 0
+    fake_images_detected: int = 0
+    image_authenticity_score: float = 100.0   # 0-100
+    flagged_images: List[str] = Field(default_factory=list)
+    results: List[ImageResult] = Field(default_factory=list)
+
+
+# ── 5c. Title / Clickbait Analysis ─────────────────────────────────────────
+
+class TitleAnalysis(BaseModel):
+    """Structured output from clickbait/title analysis."""
+    clickbait_score: float = 0.0
+    emoji_count: int = 0
+    emotional_word_count: int = 0
+    emotional_words_found: List[str] = Field(default_factory=list)
+    clickbait_reasons: List[str] = Field(default_factory=list)
+
+
 # ── 6. Final Scorecard ──────────────────────────────────────────────────────
 
 class DimensionScore(BaseModel):
@@ -171,6 +202,9 @@ class CredibilityScorecard(BaseModel):
 
     # Corroboration
     corroboration: CorroborationResult
+
+    # Image analysis (deepfake detection) — None when no images found
+    image_analysis: Optional["ImageAnalysisResult"] = None
 
     # Signals
     red_flags: List[str] = Field(default_factory=list)

@@ -1,7 +1,7 @@
 'use client';
 import { useRef, useEffect, useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { CredibilityScorecard } from '@/lib/types';
+import type { CredibilityScorecard, ImageAnalysisResult } from '@/lib/types';
 
 const PropagationGraph = dynamic(
   () => import('@/components/PropagationGraph'),
@@ -374,6 +374,50 @@ export default function ScorecardModal({ sc, onClose }: Props) {
               </div>
             )}
           </div>
+
+          {/* Image Forensics */}
+          {sc.image_analysis && sc.image_analysis.results.length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
+                Image Forensics
+              </p>
+              
+              <div style={{ background: '#F8F7F4', borderRadius: '10px', padding: '12px 14px', display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '13px', color: '#52525B', marginBottom: '14px' }}>
+                <span><strong style={{ color: '#18181B' }}>{sc.image_analysis.total_images_analyzed}</strong> images analyzed</span>
+                <span><strong style={{ color: '#18181B' }}>{sc.image_analysis.fake_images_detected}</strong> fake detected</span>
+                <span>Authenticity score: <strong style={{ color: scoreColor(sc.image_analysis.image_authenticity_score) }}>{sc.image_analysis.image_authenticity_score.toFixed(0)}</strong> / 100</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
+                {sc.image_analysis.results.map((r, i) => {
+                  const isFake = r.verdict === 'FAKE';
+                  const pbg = isFake ? '#FEF2F2' : '#F0FDF4';
+                  const pborder = isFake ? '#FECACA' : '#BBF7D0';
+                  const ptext = isFake ? '#991B1B' : '#166534';
+                  return (
+                    <div key={i} style={{ background: '#FFFFFF', border: '1px solid #E8E5DE', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', background: '#F8F7F4' }}>
+                        <img src={r.gradcam_base64} alt="GradCAM" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px 8px', borderRadius: '20px', background: pbg, border: `1px solid ${pborder}`, color: ptext, fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: ptext }} />
+                          {r.verdict}
+                        </div>
+                      </div>
+                      <div style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 500, color: '#18181B' }}>Fake Probability</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: isFake ? '#991B1B' : '#166534' }}>{(r.fake_probability * 100).toFixed(1)}%</span>
+                        </div>
+                        <a href={r.url} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#71717A', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {r.url}
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Relevant facts */}
           {sc.relevant_facts?.length > 0 && (

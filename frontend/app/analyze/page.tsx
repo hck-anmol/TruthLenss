@@ -182,9 +182,6 @@ export default function AnalyzePage() {
                         <p style={{ fontSize: '12px', color: '#A1A1AA', marginTop: '4px' }}>PNG, JPG, WEBP — Screenshots, infographics</p>
                       </div>
                       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} />
-                      <div style={{ fontSize: '11px', color: '#92400E', background: '#FFFBEB', padding: '4px 10px', borderRadius: '4px', border: '1px solid #FDE68A', marginTop: '4px' }}>
-                        ⚠ Deepfake detection module — coming soon
-                      </div>
                     </div>
                   )}
                 </div>

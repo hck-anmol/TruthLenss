@@ -11,7 +11,7 @@ Strategy:
 import urllib.parse
 import logging
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import trafilatura
 import requests
@@ -110,6 +110,11 @@ class ArticleExtractor:
                 f"  address bar after the page fully loads — it often redirects to the real source."
             )
 
+        # Step 6: Extract image URLs (filtering out ads, icons, tracking pixels)
+        image_urls = self._extract_image_urls(raw_html, resolved_url) if raw_html else []
+        if image_urls:
+            logger.info(f"  Found {len(image_urls)} content images for analysis")
+
         return ArticleExtraction(
             url=resolved_url,
             title=title or "Untitled Article",
@@ -121,6 +126,7 @@ class ArticleExtractor:
             uses_https=uses_https,
             word_count=word_count,
             ad_profile=ad_profile,
+            image_urls=image_urls,
         )
 
 
@@ -350,3 +356,146 @@ class ArticleExtractor:
             clickbait_networks_found=networks_list,
             ad_density=ad_density
         )
+
+    # ── Image URL extraction (with ad filtering) ──────────────────────────
+
+    # Domains / URL patterns that indicate ad or tracking images
+    _AD_IMAGE_PATTERNS = re.compile(
+        r'(doubleclick\.net|googlesyndication\.com|googleadservices\.com'
+        r'|facebook\.com/tr|pixel\.quantserve|scorecardresearch\.com'
+        r'|amazon-adsystem|taboola\.com|outbrain\.com|mgid\.com'
+        r'|revcontent\.com|adnxs\.com|criteo\.com|moatads\.com'
+        r'|adsafeprotected\.com|analytics|tracking|beacon'
+        r'|1x1|spacer|pixel|blank\.gif|clear\.gif)', re.I
+    )
+
+    # CSS class / id patterns for ad containers
+    _AD_CONTAINER_PATTERNS = re.compile(
+        r'(ad-container|advertisement|ad-slot|ad_unit|adsbygoogle'
+        r'|taboola|outbrain|mgid|revcontent|sponsored|promo-|sidebar-ad'
+        r'|banner-ad|dfp-ad|ad-wrapper|ad-block|commercial)', re.I
+    )
+
+    # Filename patterns for icons, logos, social buttons
+    _ICON_PATTERNS = re.compile(
+        r'(favicon|logo|icon|badge|avatar|sprite|button|arrow'
+        r'|share|social|twitter|facebook|whatsapp|pinterest|linkedin'
+        r'|youtube|instagram|rss|email|print|close|menu|hamburger'
+        r'|search|magnif|caret|chevron|play-btn|subscribe)', re.I
+    )
+
+    def _extract_image_urls(self, html: str, base_url: str) -> List[str]:
+        """
+        Extract meaningful content image URLs from article HTML.
+        Filters out: ad images, tracking pixels, icons, logos, SVGs,
+        social buttons, and images inside ad containers.
+        """
+        if not html:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        seen = set()
+        image_urls = []
+
+        # First, mark all ad container elements so we can skip images inside them
+        ad_containers = set()
+        for tag in soup.find_all(True):
+            classes = " ".join(tag.get("class", []))
+            tag_id = tag.get("id", "")
+            if self._AD_CONTAINER_PATTERNS.search(classes) or self._AD_CONTAINER_PATTERNS.search(tag_id):
+                ad_containers.add(id(tag))
+                # Also mark all descendants
+                for child in tag.descendants:
+                    if hasattr(child, 'name'):
+                        ad_containers.add(id(child))
+
+        def _is_inside_ad(tag):
+            """Check if a tag or any of its ancestors is an ad container."""
+            current = tag
+            while current:
+                if id(current) in ad_containers:
+                    return True
+                current = current.parent
+            return False
+
+        def _normalize_url(src: str) -> Optional[str]:
+            """Convert relative URLs to absolute."""
+            if not src or src.startswith('data:'):
+                return None
+            try:
+                return urllib.parse.urljoin(base_url, src)
+            except Exception:
+                return None
+
+        def _is_valid_content_image(url: str, tag=None) -> bool:
+            """Returns True if the URL looks like a real content image."""
+            if not url:
+                return False
+            # Skip non-http URLs
+            if not url.startswith(('http://', 'https://')):
+                return False
+            # Skip ad / tracking domains
+            if self._AD_IMAGE_PATTERNS.search(url):
+                return False
+            # Skip icons, logos, social buttons
+            if self._ICON_PATTERNS.search(url.split('?')[0]):  # check path only
+                return False
+            # Skip SVG files (usually icons/logos)
+            if url.lower().split('?')[0].endswith('.svg'):
+                return False
+            # Skip tiny dimension hints in the tag (tracking pixels)
+            if tag:
+                w = tag.get('width', '')
+                h = tag.get('height', '')
+                try:
+                    if w and int(str(w).replace('px', '')) <= 5:
+                        return False
+                    if h and int(str(h).replace('px', '')) <= 5:
+                        return False
+                except (ValueError, TypeError):
+                    pass
+            return True
+
+        # 1. og:image meta tag (high priority — article hero image)
+        og_img = soup.find("meta", property="og:image")
+        if og_img and og_img.get("content"):
+            url = _normalize_url(og_img["content"])
+            if url and _is_valid_content_image(url) and url not in seen:
+                image_urls.append(url)
+                seen.add(url)
+
+        # 2. Content area images — prefer <article>, <main>, content divs
+        content_areas = soup.find_all(
+            ["article", "main", "div"],
+            class_=re.compile(r"(article|content|story|body|text|post)", re.I)
+        )
+
+        # If no content area found, fall back to body
+        if not content_areas:
+            content_areas = [soup.body] if soup.body else [soup]
+
+        for area in content_areas:
+            for img_tag in area.find_all("img"):
+                # Skip if inside ad container
+                if _is_inside_ad(img_tag):
+                    continue
+
+                src = img_tag.get("src") or img_tag.get("data-src") or img_tag.get("data-lazy-src")
+                url = _normalize_url(src)
+                if url and _is_valid_content_image(url, img_tag) and url not in seen:
+                    image_urls.append(url)
+                    seen.add(url)
+
+                # Also check srcset for higher-res versions
+                srcset = img_tag.get("srcset", "")
+                if srcset and not image_urls:  # only if we haven't found the main src
+                    # Pick the largest from srcset
+                    parts = [s.strip().split()[0] for s in srcset.split(",") if s.strip()]
+                    for part in parts[:1]:  # just the first/largest
+                        url = _normalize_url(part)
+                        if url and _is_valid_content_image(url, img_tag) and url not in seen:
+                            image_urls.append(url)
+                            seen.add(url)
+
+        # Cap at 10 images to avoid excessive downloads
+        return image_urls[:10]

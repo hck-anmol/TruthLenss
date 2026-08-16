@@ -36,6 +36,22 @@ export interface AdProfile {
   ad_density: number;
 }
 
+export interface ImageResult {
+  url: string;
+  fake_probability: number;
+  verdict: string;          // 'REAL' or 'FAKE'
+  gradcam_base64: string;   // data:image/jpeg;base64,... heatmap
+}
+
+export interface ImageAnalysisResult {
+  total_images_analyzed: number;
+  fake_images_detected: number;
+  image_authenticity_score: number;  // 0-100
+  flagged_images: string[];
+  results: ImageResult[];
+}
+
+
 export interface CredibilityScorecard {
   url: string | null;
   title: string;
@@ -62,6 +78,8 @@ export interface CredibilityScorecard {
   positive_signals: string[];
   /** Corroboration from Tavily */
   corroboration?: CorroborationResult;
+  /** Image deepfake analysis — null when no images found */
+  image_analysis?: ImageAnalysisResult | null;
 }
 
 export type AnalysisMode = 'url' | 'text' | 'image';

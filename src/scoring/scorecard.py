@@ -1,32 +1,53 @@
 """
 ScorecardGenerator: Combines all analysis outputs into the final
 CredibilityScorecard with a REAL/FAKE verdict and full dimension breakdown.
+
+Supports dynamic weight allocation:
+  - When images are analyzed: 6 dimensions (image gets 10% weight)
+  - When no images: original 5 dimensions (unchanged)
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from src.schemas.article_schema import (
     ArticleExtraction, OllamaAnalysis, CorroborationResult,
-    CredibilityScorecard, DimensionScore
+    CredibilityScorecard, DimensionScore, ImageAnalysisResult
 )
 from src.verification.tavily_corroborator import KNOWN_UNRELIABLE
 
 
 class ScorecardGenerator:
     """
-    Weights (must sum to 1.0):
-      corroboration  35% — live web evidence is the strongest signal
-      content        25% — what Ollama found: bias, misleading, clickbait
-      source_trust   20% — domain of the original article
-      language       10% — emotional language, sensationalism
-      metadata        10% — author, date, HTTPS, named sources
+    Weights WITHOUT images (sum = 1.0):
+      corroboration  35%
+      content        25%
+      source_trust   20%
+      language       10%
+      metadata       10%
+
+    Weights WITH images (sum = 1.0):
+      corroboration  30%  (-5%)
+      content        25%
+      source_trust   15%  (-5%)
+      language       10%
+      metadata       10%
+      image          10%  (new)
     """
-    WEIGHTS = {
+    WEIGHTS_NO_IMAGES = {
         "corroboration": 0.35,
         "content":       0.25,
         "source_trust":  0.20,
         "language":      0.10,
         "metadata":      0.10,
+    }
+
+    WEIGHTS_WITH_IMAGES = {
+        "corroboration": 0.30,
+        "content":       0.25,
+        "source_trust":  0.15,
+        "language":      0.10,
+        "metadata":      0.10,
+        "image":         0.10,
     }
 
     def generate(
@@ -35,7 +56,15 @@ class ScorecardGenerator:
         ollama: OllamaAnalysis,
         corr: CorroborationResult,
         llm_reasoning: Dict[str, Any],
+        image_analysis: Optional[ImageAnalysisResult] = None,
     ) -> CredibilityScorecard:
+
+        # Decide which weight set to use based on whether images were analyzed
+        has_images = (
+            image_analysis is not None
+            and image_analysis.total_images_analyzed > 0
+        )
+        weights = self.WEIGHTS_WITH_IMAGES if has_images else self.WEIGHTS_NO_IMAGES
 
         # ── Dimension 1: Corroboration ─────────────────────────────────────
         corr_score = round(corr.corroboration_score * 100, 1)
@@ -112,13 +141,24 @@ class ScorecardGenerator:
         if ollama.has_named_sources: meta_raw += 15
         metadata_score = round(min(meta_raw, 100), 1)
 
+        # ── Dimension 6: Image Authenticity (only when images analyzed) ────
+        image_score = 0.0
+        image_summary = ""
+        if has_images:
+            image_score = round(image_analysis.image_authenticity_score, 1)
+            image_summary = (
+                f"{image_analysis.total_images_analyzed} analyzed, "
+                f"{image_analysis.fake_images_detected} flagged"
+            )
+
         # ── Weighted overall ───────────────────────────────────────────────
         overall = round(
-            corr_score    * self.WEIGHTS["corroboration"] +
-            content_score * self.WEIGHTS["content"] +
-            source_score  * self.WEIGHTS["source_trust"] +
-            language_score * self.WEIGHTS["language"] +
-            metadata_score * self.WEIGHTS["metadata"],
+            corr_score     * weights["corroboration"] +
+            content_score  * weights["content"] +
+            source_score   * weights["source_trust"] +
+            language_score * weights["language"] +
+            metadata_score * weights["metadata"] +
+            (image_score   * weights.get("image", 0)),
             1
         )
         overall = max(0.0, min(100.0, overall))
@@ -144,12 +184,24 @@ class ScorecardGenerator:
 
         # ── Build dimension list ───────────────────────────────────────────
         dims = [
-            DimensionScore(name="Corroboration",  score=corr_score,    weight=0.35, contribution=round(corr_score*0.35,1),    summary=corr.verdict_label),
-            DimensionScore(name="Content Quality",score=content_score,  weight=0.25, contribution=round(content_score*0.25,1),  summary=content_summary),
-            DimensionScore(name="Source Trust",   score=source_score,   weight=0.20, contribution=round(source_score*0.20,1),   summary=f"Domain: {domain or 'unknown'}"),
-            DimensionScore(name="Language",       score=language_score, weight=0.10, contribution=round(language_score*0.10,1), summary=f"Tone: {ollama.content_tone} | {emotional_count} emotional phrase(s)"),
-            DimensionScore(name="Metadata",       score=metadata_score, weight=0.10, contribution=round(metadata_score*0.10,1), summary=f"Author: {'yes' if article.authors else 'no'} | Date: {'yes' if article.publish_date else 'no'}"),
+            DimensionScore(name="Corroboration",  score=corr_score,     weight=weights["corroboration"], contribution=round(corr_score*weights["corroboration"],1),     summary=corr.verdict_label),
+            DimensionScore(name="Content Quality", score=content_score,  weight=weights["content"],       contribution=round(content_score*weights["content"],1),        summary=content_summary),
+            DimensionScore(name="Source Trust",    score=source_score,   weight=weights["source_trust"],  contribution=round(source_score*weights["source_trust"],1),    summary=f"Domain: {domain or 'unknown'}"),
+            DimensionScore(name="Language",        score=language_score, weight=weights["language"],      contribution=round(language_score*weights["language"],1),      summary=f"Tone: {ollama.content_tone} | {emotional_count} emotional phrase(s)"),
+            DimensionScore(name="Metadata",        score=metadata_score, weight=weights["metadata"],      contribution=round(metadata_score*weights["metadata"],1),     summary=f"Author: {'yes' if article.authors else 'no'} | Date: {'yes' if article.publish_date else 'no'}"),
         ]
+
+        # Add image dimension only when images were analyzed
+        if has_images:
+            dims.append(
+                DimensionScore(
+                    name="Image Authenticity",
+                    score=image_score,
+                    weight=weights["image"],
+                    contribution=round(image_score * weights["image"], 1),
+                    summary=image_summary
+                )
+            )
 
         # ── Red flags and positive signals ────────────────────────────────
         red_flags    = list(llm_reasoning.get("red_flags", []))
@@ -172,6 +224,32 @@ class ScorecardGenerator:
             red_flags.append(f"Low-tier 'chumbox' ad networks detected ({networks_str}) — common on clickbait sites")
         if ad_prof.ad_density > 1.5:
             red_flags.append(f"Highly aggressive ad density ({ad_prof.ad_density:.1f} ads per 100 words)")
+
+        # Image-specific red flags
+        if has_images:
+            if image_analysis.fake_images_detected >= 2:
+                red_flags.append(
+                    f"Multiple potentially manipulated images detected "
+                    f"({image_analysis.fake_images_detected} of {image_analysis.total_images_analyzed})"
+                )
+            elif image_analysis.fake_images_detected == 1:
+                # Find the highest-probability fake image
+                worst = max(
+                    (r for r in image_analysis.results if r.verdict == "FAKE"),
+                    key=lambda r: r.fake_probability,
+                    default=None
+                )
+                if worst and worst.fake_probability > 0.7:
+                    red_flags.append(
+                        f"Potentially manipulated image detected "
+                        f"({worst.fake_probability*100:.0f}% deepfake probability)"
+                    )
+            # Positive signal for all-real images
+            if image_analysis.fake_images_detected == 0 and image_analysis.total_images_analyzed >= 2:
+                pos_signals.append(
+                    f"All {image_analysis.total_images_analyzed} article images passed "
+                    f"deepfake detection (Xception + GradCAM)"
+                )
 
         # Auto positive signals
         if corr.tier1_count >= 2:
@@ -204,6 +282,8 @@ class ScorecardGenerator:
             misleading_patterns=ollama.misleading_patterns,
             content_tone=ollama.content_tone,
             corroboration=corr,
+            image_analysis=image_analysis if has_images else None,
             red_flags=red_flags[:6],
             positive_signals=pos_signals[:6],
         )
+

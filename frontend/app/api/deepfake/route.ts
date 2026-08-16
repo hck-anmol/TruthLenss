@@ -1,15 +1,3 @@
-/**
- * /api/deepfake — Standalone Image & Video Deepfake Detection
- *
- * POST multipart/form-data with:
- *   - `image`: an image file (PNG/JPG/WEBP) for deepfake analysis
- *   - `video`: a video file (MP4/WEBM/MOV) for frame-by-frame deepfake analysis
- *
- * Video analysis: 3 fps normal pass → adaptive burst (5 fps) at ±2 sec around anomalies
- * Image analysis: runs the personally trained Xception model + GradCAM heatmap
- *
- * Returns the full CredibilityScorecard JSON (subset: image_analysis or video_analysis)
- */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn }                      from 'child_process';
@@ -21,11 +9,11 @@ const PYTHON_ROOT = path.resolve(process.cwd(), '..');
 const PYTHON_EXE  = path.join(PYTHON_ROOT, '.venv', 'Scripts', 'python.exe');
 const MAIN_SCRIPT = path.join(PYTHON_ROOT, 'main.py');
 
-// ── Note: Allow large video uploads (up to 200 MB) ───────────────────────────
-// Next.js App Router handles form-data streamingly. 
-// Server action size limits are configured in next.config.ts.
 
-// ── Python runner ─────────────────────────────────────────────────────────────
+
+
+
+
 
 function runPython(args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -75,11 +63,11 @@ function parseJson(stdout: string) {
 
 function cleanupFile(p: string) {
   if (p) {
-    try { fs.unlinkSync(p); } catch { /* ignore */ }
+    try { fs.unlinkSync(p); } catch {  }
   }
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') ?? '';
@@ -113,14 +101,14 @@ export async function POST(req: NextRequest) {
       const ext   = path.extname(videoFile.name) || '.mp4';
       tmpFilePath = path.join(os.tmpdir(), `tl_deepfake_video_${Date.now()}${ext}`);
 
-      // Write video to temp file in chunks to avoid memory pressure
-      const buffer = Buffer.from(await videoFile.arrayBuffer());
+
+            const buffer = Buffer.from(await videoFile.arrayBuffer());
       fs.writeFileSync(tmpFilePath, buffer);
 
       args.push('--video', tmpFilePath);
 
-      // Video analysis timeout: 30 minutes (frame-by-frame is slow on CPU)
-      const stdout    = await runPython(args, 30 * 60 * 1000);
+
+            const stdout    = await runPython(args, 30 * 60 * 1000);
       const scorecard = parseJson(stdout);
       return NextResponse.json(scorecard);
 
@@ -134,14 +122,14 @@ export async function POST(req: NextRequest) {
 
       args.push('--image', tmpFilePath);
 
-      // Image analysis timeout: 5 minutes
-      const stdout    = await runPython(args, 5 * 60 * 1000);
+
+            const stdout    = await runPython(args, 5 * 60 * 1000);
       const scorecard = parseJson(stdout);
       return NextResponse.json(scorecard);
     }
 
-    // Should never reach here
-    return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
+
+        return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
 
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Internal server error';

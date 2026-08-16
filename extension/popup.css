@@ -42,7 +42,7 @@ body {
   display: none !important;
 }
 
-/* States */
+
 .idle-state, .error-state {
   text-align: center;
   padding: 20px 0;
@@ -77,7 +77,7 @@ button:hover {
   opacity: 0.9;
 }
 
-/* Loading */
+
 .loading-state {
   text-align: center;
   padding: 30px 0;
@@ -103,7 +103,7 @@ button:hover {
   margin: 0;
 }
 
-/* Result */
+
 .score-hero {
   display: flex;
   gap: 16px;

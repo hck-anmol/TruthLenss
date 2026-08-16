@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const btnAnalyze = document.getElementById('analyze-btn');
   const btnRetry = document.getElementById('retry-btn');
-  
-  const stateIdle = document.getElementById('idle-state');
+
+    const stateIdle = document.getElementById('idle-state');
   const stateLoading = document.getElementById('loading-state');
   const stateError = document.getElementById('error-state');
   const stateResult = document.getElementById('result-state');
@@ -71,15 +71,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function analyzeCurrentTab() {
     showState(stateLoading);
-    
-    try {
+
+        try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab || !tab.url) {
         throw new Error("Could not get the current page URL.");
       }
 
-      // Send to local TruthLens server
-      const res = await fetch('http://localhost:3000/api/analyze', {
+
+            const res = await fetch('http://localhost:3000/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: tab.url })

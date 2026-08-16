@@ -20,12 +20,12 @@ from src.analysis.image_forensics import DeepfakeImageAnalyzer
 
 logger = logging.getLogger(__name__)
 
-# ── Constants ────────────────────────────────────────────────────────────────
-NORMAL_FPS      = 3      # frames sampled per second in the normal pass
-BURST_FPS       = 5      # frames sampled per second during anomaly burst (5–6 per spec)
-ANOMALY_THRESH  = 0.70   # fake_probability threshold that triggers a burst
-BURST_RADIUS    = 2      # ±N seconds around an anomaly second (2 sec fwd + 2 sec bkwd)
-MAX_DURATION_S  = 600    # cap analysis at 10 minutes of video
+
+NORMAL_FPS      = 3      
+BURST_FPS       = 5      
+ANOMALY_THRESH  = 0.70   
+BURST_RADIUS    = 2      
+MAX_DURATION_S  = 600    
 
 
 def _sample_frame_indices(second: int, video_fps: float, samples: int,
@@ -40,7 +40,7 @@ def _sample_frame_indices(second: int, video_fps: float, samples: int,
     return indices
 
 
-# ── Download helper ───────────────────────────────────────────────────────────
+
 
 def _download_video(url: str) -> Optional[str]:
     """
@@ -50,7 +50,7 @@ def _download_video(url: str) -> Optional[str]:
     """
     if any(host in url for host in ("youtube.com", "youtu.be", "vimeo.com")):
         try:
-            import yt_dlp  # type: ignore
+            import yt_dlp  
             tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
             tmp.close()
             ydl_opts = {
@@ -89,7 +89,7 @@ def _download_video(url: str) -> Optional[str]:
         return None
 
 
-# ── Main analyzer ─────────────────────────────────────────────────────────────
+
 
 class VideoForensicsAnalyzer:
     def analyze_url(self, url: str) -> Optional[VideoAnalysisResult]:
@@ -125,7 +125,7 @@ class VideoForensicsAnalyzer:
         )
 
         image_analyzer = DeepfakeImageAnalyzer()
-        # Ensure it processes all our video frames by temporarily overriding max_images
+        
         old_max = image_analyzer.max_images
         image_analyzer.max_images = 9999
 
@@ -136,15 +136,15 @@ class VideoForensicsAnalyzer:
             burst_seconds: Set[int]   = set()
             frame_results: List[VideoFrameResult] = []
             
-            # Keep a global mapping of (second, frame_idx) -> temp_jpg_path
-            # We'll analyze these via image_analyzer
+            
+            
             frame_paths: dict = {}
             all_probs: List[float] = []
 
-            # ── Helper to sample and write frames ───────────────────────
+            
             def _extract_and_analyze(s: int, indices: List[int], is_burst: bool) -> List[float]:
                 paths_to_analyze = []
-                idx_mapping = [] # to remember which path maps to which (s, idx)
+                idx_mapping = [] 
                 for i, fi in enumerate(indices):
                     cap.set(cv2.CAP_PROP_POS_FRAMES, float(fi))
                     ret, frame = cap.read()
@@ -159,16 +159,16 @@ class VideoForensicsAnalyzer:
                 if not paths_to_analyze:
                     return []
                     
-                # Analyze this batch of frames using ImageForensics!
+                
                 img_res = image_analyzer.analyze(paths_to_analyze)
                 
                 probs = []
-                # Reconstruct results
+                
                 for i, path_analyzed in enumerate(paths_to_analyze):
                     frame_idx = idx_mapping[i]
                     prob = 0.0
                     heatmap = ""
-                    # Find corresponding result
+                    
                     for r in img_res.results:
                         if r.url == path_analyzed:
                             prob = r.fake_probability
@@ -187,20 +187,20 @@ class VideoForensicsAnalyzer:
                     ))
                 return probs
 
-            # ── Pass 1: Normal sampling (3 fps) ──────────────────────────────────
+            
             for s in range(total_secs):
                 indices = _sample_frame_indices(s, video_fps, NORMAL_FPS, total_frames)
                 probs = _extract_and_analyze(s, indices, is_burst=False)
                 
                 if any(p > ANOMALY_THRESH for p in probs):
                     anomaly_seconds.add(s)
-                    # Burst covers BOTH past and future seconds within the radius
+                    
                     for r in range(max(0, s - BURST_RADIUS),
                                    min(total_secs, s + BURST_RADIUS + 1)):
-                        if r != s:  # don't re-process the anomaly second itself
+                        if r != s:  
                             burst_seconds.add(r)
                             
-            # ── Pass 2: Burst sampling (10 fps) for anomaly regions ──────────────
+            
             if burst_seconds:
                 logger.info(f"Video forensics: anomaly burst on seconds {sorted(burst_seconds)[:20]}")
             
@@ -221,7 +221,7 @@ class VideoForensicsAnalyzer:
                 total_frames_analyzed=0,
             )
 
-        # ── Aggregate results ─────────────────────────────────────────────────
+        
         fake_count = sum(1 for p in all_probs if p > ANOMALY_THRESH)
         max_prob   = max(all_probs)
         fake_ratio = fake_count / len(all_probs)
@@ -235,16 +235,16 @@ class VideoForensicsAnalyzer:
         else:
             verdict = "REAL"
 
-        # Sort frame results chronologically
+        
         frame_results.sort(key=lambda x: (x.second, x.frame_index))
 
-        # Only keep top 10 heatmaps to save memory in JSON, clear the rest
-        # (ImageAnalyzer returned heatmaps for all of them)
+        
+        
         frame_results.sort(key=lambda x: x.fake_probability, reverse=True)
         for i, fr in enumerate(frame_results):
             if i >= 10:
                 fr.gradcam_base64 = ""
-        # Re-sort chronologically
+        
         frame_results.sort(key=lambda x: (x.second, x.frame_index))
 
         logger.info(

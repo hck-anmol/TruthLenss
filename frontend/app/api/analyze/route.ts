@@ -4,15 +4,15 @@ import path                           from 'path';
 import fs                             from 'fs';
 import os                             from 'os';
 
-// Path to your Python project root (go up from frontend/)
+
 const PYTHON_ROOT = path.resolve(process.cwd(), '..');
 const PYTHON_EXE  = path.join(PYTHON_ROOT, '.venv', 'Scripts', 'python.exe');
 const MAIN_SCRIPT = path.join(PYTHON_ROOT, 'main.py');
 
-// Next.js App Router body parser is handled automatically for req.formData().
-// (The 200MB limit for server actions is already set in next.config.ts)
 
-// ── Shared: spawn Python and collect output ──────────────────────────────────
+
+
+
 
 function runPython(args: string[], timeoutMs = 15 * 60 * 1000): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -62,18 +62,15 @@ function parseJson(stdout: string) {
 
 function cleanupFile(p: string) {
   if (p) {
-    try { fs.unlinkSync(p); } catch { /* ignore */ }
+    try { fs.unlinkSync(p); } catch {  }
   }
 }
 
-// ── Route handler ────────────────────────────────────────────────────────────
+
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') ?? '';
 
-  // ── Branch A: multipart/form-data  (image upload for article analysis) ─────
-  // NOTE: Video upload is handled by /api/deepfake — not here.
-  // Article analysis (URL/text) only. Image upload is for article image deepfake.
   if (contentType.includes('multipart/form-data')) {
     let tmpImagePath = '';
     try {
@@ -91,8 +88,8 @@ export async function POST(req: NextRequest) {
 
       const args: string[] = [MAIN_SCRIPT, '--json'];
 
-      // Save uploaded image to a temp file
-      if (imgFile) {
+
+            if (imgFile) {
         const ext    = path.extname(imgFile.name) || '.jpg';
         tmpImagePath = path.join(os.tmpdir(), `tl_image_${Date.now()}${ext}`);
         const buffer = Buffer.from(await imgFile.arrayBuffer());
@@ -115,8 +112,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Branch B: application/json  (URL / text — article analysis) ─────────────
-  try {
+
+    try {
     const body        = await req.json();
     const { url, text } = body;
 

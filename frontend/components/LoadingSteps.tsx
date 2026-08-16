@@ -18,7 +18,7 @@ export default function LoadingSteps({ step }: { step: number }) {
           const active = step === idx;
           return (
             <div key={idx} className="flex items-start gap-4">
-              {/* indicator */}
+              {}
               <div className="relative flex-shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center">
                 {done ? (
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -49,7 +49,7 @@ export default function LoadingSteps({ step }: { step: number }) {
         })}
       </div>
 
-      {/* Subtle progress bar */}
+      {}
       <div className="mt-8 h-px w-full bg-[#E8E5DE] rounded-full overflow-hidden">
         <div
           className="h-full bg-[#1B3A6B] rounded-full transition-all duration-1000 ease-out"

@@ -3,16 +3,16 @@ Human-written prompts for Ollama (qwen3:8b).
 Each prompt has a strict JSON output format so the pipeline can parse it reliably.
 """
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PROMPT 1: Context-first article analysis
-# Used by: OllamaExtractor.analyze_article()
-#
-# The LLM must:
-#   1. First identify the core context of the article (what is it ACTUALLY about)
-#   2. Extract ALL verifiable facts from the text
-#   3. Sort those facts: relevant (match the context) vs irrelevant (don't match)
-#   4. Extract claims, search queries, language signals
-# ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
 
 ARTICLE_ANALYSIS_PROMPT = """You are a senior investigative journalist and fact-checker with 20 years of experience. You will analyse a news article in a structured, step-by-step way.
 
@@ -104,10 +104,10 @@ CRITICAL RULES:
 """
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PROMPT 2: Credibility reasoning given corroboration results
-# Used by: OllamaExtractor.reason_about_credibility()
-# ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
 
 CREDIBILITY_REASONING_PROMPT = """You are a senior fact-checker at a major news organisation. You have searched the internet for articles about the same topic and found the results below.
 

@@ -35,18 +35,18 @@ class MetadataExtractor:
             href = a['href']
             if href.startswith('http') and base_domain not in href:
                 links.append(href)
-        return list(set(links))[:20]  # cap at 20 unique outbound links
+        return list(set(links))[:20]  
 
     def enrich_metadata(self, article: ExtractedArticle, html_content: str = "") -> ExtractedArticle:
         ad_metrics = self.analyze_ad_density(html_content, len(article.text))
         article.num_ads_estimated = ad_metrics["num_ads_estimated"]
         article.ad_ratio = ad_metrics["ad_ratio"]
 
-        # Extract outbound links
+        
         if html_content:
             article.outbound_links = self.extract_outbound_links(html_content, article.domain or "")
 
-        # HTTPS detection
+        
         if article.url:
             article.uses_https = article.url.startswith("https://")
 

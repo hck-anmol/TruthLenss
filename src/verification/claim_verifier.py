@@ -98,7 +98,7 @@ class ClaimVerifier:
             "Based ONLY on the above evidence, provide your verdict in JSON."
         )
         result = self.llm.generate_json(prompt, system_prompt=CLAIM_VERIFY_SYSTEM_PROMPT)
-        # Validate keys
+        
         if "verdict" not in result or result["verdict"] not in ("SUPPORTED", "CONTRADICTED", "UNVERIFIED"):
             result["verdict"] = "UNVERIFIED"
         result.setdefault("confidence", 0.4)

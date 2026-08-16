@@ -4,11 +4,11 @@ from typing import List
 class SimpleEmbeddingModel:
     """Frequency-based embedding model for offline/lightweight similarity retrieval."""
     def embed_text(self, text: str) -> List[float]:
-        # Generate 128-dimensional vector representation based on word hashes
+        
         words = text.lower().split()
         vector = [0.0] * 128
         for word in words:
-            # Map words to vector bins using hash algorithm
+            
             idx = abs(hash(word)) % 128
             vector[idx] += 1.0
         norm = math.sqrt(sum(v * v for v in vector)) or 1.0

@@ -3,7 +3,7 @@ from typing import List, Dict
 from src.schemas.article_schema import ContentAnalysis, ExtractedArticle
 
 class ContentAnalyzer:
-    # One-sided/absolutist language → bias
+    
     BIAS_PHRASES = [
         r"\balways\b", r"\bnever\b", r"\ball\b.{0,10}\b(agree|know|believe|say)\b",
         r"\beveryone knows\b", r"\bnobody (believes|thinks|says)\b",
@@ -13,7 +13,7 @@ class ContentAnalyzer:
         r"\bproved (once and for all)\b", r"\bundeniably\b"
     ]
 
-    # Misleading info patterns
+    
     MISLEADING_PATTERNS = [
         r"\bscientists? (baffled|shocked|stunned)\b",
         r"\bdoctors? (hate|don't want you)\b",
@@ -27,7 +27,7 @@ class ContentAnalyzer:
         r"\bunveiled: the truth\b"
     ]
 
-    # Emotional body language
+    
     EMOTION_VOCAB = [
         "shocking", "horrifying", "devastating", "panic", "furious", "outrage",
         "scandal", "explosive", "terrifying", "chaotic", "unbelievable", "disgusting",
@@ -40,14 +40,14 @@ class ContentAnalyzer:
         words = text_lower.split()
         word_count = max(len(words), 1)
 
-        # Bias detection
+        
         bias_hits = []
         for pattern in self.BIAS_PHRASES:
             if re.search(pattern, text_lower):
                 bias_hits.append(pattern.replace(r"\b", "").strip())
         bias_score = round(min(len(bias_hits) / 5.0, 1.0), 3)
 
-        # Misleading info detection
+        
         misleading_hits = []
         for pattern in self.MISLEADING_PATTERNS:
             match = re.search(pattern, text_lower)
@@ -55,11 +55,11 @@ class ContentAnalyzer:
                 misleading_hits.append(match.group(0))
         misleading_score = round(min(len(misleading_hits) / 4.0, 1.0), 3)
 
-        # Emotional body language score
+        
         emotional_hits = [w for w in words if w in self.EMOTION_VOCAB]
         emotional_body_score = round(min(len(emotional_hits) / (word_count / 50.0 + 1.0) * 0.5, 1.0), 3)
 
-        # Emotion breakdown (reuse simplified counts)
+        
         emotion_category_breakdown = {
             "fear": round(sum(1 for w in words if w in ["panic", "deadly", "catastrophic", "dangerous", "alarming"]) / (word_count / 100.0 + 1), 3),
             "anger": round(sum(1 for w in words if w in ["outrage", "furious", "scandal", "disgusting"]) / (word_count / 100.0 + 1), 3),

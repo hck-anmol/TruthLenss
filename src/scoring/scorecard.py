@@ -50,7 +50,7 @@ class ScorecardGenerator:
         "image":         0.10,
     }
 
-    # Video takes 12%; image weight reduced to 5% when both present
+    
     WEIGHTS_WITH_VIDEO = {
         "corroboration": 0.28,
         "content":       0.23,
@@ -58,7 +58,7 @@ class ScorecardGenerator:
         "language":      0.10,
         "metadata":      0.08,
         "video":         0.12,
-        "image":         0.05,   # only used when both image+video present
+        "image":         0.05,   
     }
 
     WEIGHTS_VIDEO_ONLY = {
@@ -89,7 +89,7 @@ class ScorecardGenerator:
         video_analysis: Optional[VideoAnalysisResult] = None,
     ) -> CredibilityScorecard:
 
-        # Decide which weight set to use
+        
         has_images = (
             image_analysis is not None
             and image_analysis.total_images_analyzed > 0
@@ -98,9 +98,9 @@ class ScorecardGenerator:
             video_analysis is not None
             and video_analysis.total_frames_analyzed > 0
         )
-        # Video-only mode: article has no text (word_count == 0) and we only have a video input
+        
         video_only_mode = article.word_count == 0 and article.title == "Uploaded Video File"
-        # Image-only mode
+        
         image_only_mode = article.word_count == 0 and article.title == "Uploaded Image File"
 
         if video_only_mode:
@@ -114,26 +114,26 @@ class ScorecardGenerator:
         else:
             weights = self.WEIGHTS_NO_IMAGES
 
-        # ── Dimension 1: Corroboration ─────────────────────────────────────
+        
         corr_score = round(corr.corroboration_score * 100, 1)
 
-        # ── Dimension 2: Content quality ───────────────────────────────────────
-        # Deductions for bad content signals
+        
+        
         bias_penalty        = min(len(ollama.bias_indicators) * 12, 40)
         misleading_penalty  = min(len(ollama.misleading_patterns) * 18, 54)
         clickbait_penalty   = min(len(ollama.clickbait_elements) * 10, 30)
-        # IRRELEVANT FACTS PENALTY: each off-context fact deducts 5 points
+        
         irrelevant_penalty  = min(len(ollama.irrelevant_facts) * 5, 30)
 
-        # AD QUALITY PENALTY
+        
         ad_prof = article.ad_profile
         clickbait_ad_penalty = 10 if ad_prof.has_clickbait_ads else 0
         ad_density_penalty = 0
-        if ad_prof.ad_density > 1.0: # more than 1 ad per 100 words
+        if ad_prof.ad_density > 1.0: 
             ad_density_penalty = min(int((ad_prof.ad_density - 1.0) * 5), 15)
         
         content_raw = 100 - bias_penalty - misleading_penalty - clickbait_penalty - irrelevant_penalty - clickbait_ad_penalty - ad_density_penalty
-        # Bonuses for good signals
+        
         if ollama.has_named_sources:  content_raw += 8
         if ollama.has_statistics:     content_raw += 5
         if ollama.has_expert_quotes:  content_raw += 8
@@ -148,7 +148,7 @@ class ScorecardGenerator:
         if ad_prof.total_ad_slots > 0:
             content_summary += f", {ad_prof.total_ad_slots} ads"
 
-        # ── Dimension 3: Source trust ───────────────────────────────────────
+        
         domain = (article.domain or "").lower().replace("www.", "")
         if any(t in domain for t in ["reuters.com", "apnews.com", "bbc.com",
                                       "bbc.co.uk", "nature.com", "nasa.gov",
@@ -165,15 +165,15 @@ class ScorecardGenerator:
         elif domain.endswith(".org"):
             source_raw = 60
         elif domain in ("raw_input", "", "unknown"):
-            source_raw = 45  # neutral for unknown
+            source_raw = 45  
         else:
             source_raw = 50
-        # HTTPS bonus
+        
         if article.uses_https:
             source_raw = min(source_raw + 5, 100)
         source_score = round(float(source_raw), 1)
 
-        # ── Dimension 4: Language / sensationalism ─────────────────────────
+        
         emotional_count = len(ollama.emotional_phrases)
         tone_penalty = {
             "fear": 20, "anger": 18, "sensational": 22,
@@ -182,14 +182,14 @@ class ScorecardGenerator:
         language_raw = 100 - min(emotional_count * 8, 40) - tone_penalty
         language_score = round(max(0, min(language_raw, 100)), 1)
 
-        # ── Dimension 5: Metadata ──────────────────────────────────────────
-        meta_raw = 50  # baseline for unknown
+        
+        meta_raw = 50  
         if article.authors:       meta_raw += 20
         if article.publish_date:  meta_raw += 15
         if ollama.has_named_sources: meta_raw += 15
         metadata_score = round(min(meta_raw, 100), 1)
 
-        # ── Dimension 6: Image Authenticity (only when images analyzed) ────
+        
         image_score = 0.0
         image_summary = ""
         if has_images:
@@ -199,7 +199,7 @@ class ScorecardGenerator:
                 f"{image_analysis.fake_images_detected} flagged"
             )
 
-        # ── Dimension 7: Video Authenticity (only when video analyzed) ─────
+        
         video_score = 0.0
         video_summary = ""
         if has_video:
@@ -210,7 +210,7 @@ class ScorecardGenerator:
                 f"max fake {video_analysis.max_fake_probability*100:.0f}%"
             )
 
-        # ── Weighted overall ───────────────────────────────────────────────
+        
         if video_only_mode:
             overall = round(video_score, 1)
         elif image_only_mode:
@@ -228,13 +228,13 @@ class ScorecardGenerator:
             )
         overall = max(0.0, min(100.0, overall))
 
-        # Hard overrides
+        
         if any(t in domain for t in KNOWN_UNRELIABLE):
             overall = min(overall, 18.0)
         if corr.tier1_count == 0 and corr.tier2_count == 0 and len(ollama.misleading_patterns) >= 2:
             overall = min(overall, 32.0)
 
-        # ── Ratings and verdict ────────────────────────────────────────────
+        
         if overall >= 75: rating = "HIGH";       verdict = "REAL"
         elif overall >= 55: rating = "MODERATE"; verdict = "LIKELY REAL"
         elif overall >= 35: rating = "LOW";      verdict = "LIKELY FAKE"
@@ -256,7 +256,7 @@ class ScorecardGenerator:
                             " It failed critical checks: no trusted sources cover the story, and the content shows signs of deliberate manipulation."),
         }
 
-        # ── Build dimension list ───────────────────────────────────────────
+        
         dims = []
         if not video_only_mode:
             dims.extend([
@@ -267,7 +267,7 @@ class ScorecardGenerator:
                 DimensionScore(name="Metadata",        score=metadata_score, weight=weights["metadata"],      contribution=round(metadata_score*weights["metadata"],1),     summary=f"Author: {'yes' if article.authors else 'no'} | Date: {'yes' if article.publish_date else 'no'}"),
             ])
 
-        # Add image dimension only when images were analyzed
+        
         if has_images:
             dims.append(
                 DimensionScore(
@@ -279,7 +279,7 @@ class ScorecardGenerator:
                 )
             )
 
-        # Add video dimension only when video was analyzed
+        
         if has_video:
             dims.append(
                 DimensionScore(
@@ -291,11 +291,11 @@ class ScorecardGenerator:
                 )
             )
 
-        # ── Red flags and positive signals ────────────────────────────────
+        
         red_flags    = list(llm_reasoning.get("red_flags", []))
         pos_signals  = list(llm_reasoning.get("positive_signals", []))
 
-        # Auto red flags
+        
         if not video_only_mode and not image_only_mode:
             if corr.trusted_sources_count == 0:
                 red_flags.insert(0, "No trusted news outlet found covering this story on the internet")
@@ -320,7 +320,7 @@ class ScorecardGenerator:
             if not has_images:
                 red_flags.append("Image deepfake analysis failed or was unavailable. Unable to determine image authenticity.")
 
-        # Image-specific red flags
+        
         if has_images:
             if image_analysis.fake_images_detected >= 2:
                 red_flags.append(
@@ -328,7 +328,7 @@ class ScorecardGenerator:
                     f"({image_analysis.fake_images_detected} of {image_analysis.total_images_analyzed})"
                 )
             elif image_analysis.fake_images_detected == 1:
-                # Find the highest-probability fake image
+                
                 worst = max(
                     (r for r in image_analysis.results if r.verdict == "FAKE"),
                     key=lambda r: r.fake_probability,
@@ -339,14 +339,14 @@ class ScorecardGenerator:
                         f"Potentially manipulated image detected "
                         f"({worst.fake_probability*100:.0f}% deepfake probability)"
                     )
-            # Positive signal for all-real images
+            
             if image_analysis.fake_images_detected == 0 and image_analysis.total_images_analyzed >= 2:
                 pos_signals.append(
                     f"All {image_analysis.total_images_analyzed} article images passed "
                     f"deepfake detection (Xception + GradCAM)"
                 )
 
-        # Video-specific red flags and positive signals
+        
         if has_video:
             if video_analysis.verdict == "FAKE":
                 red_flags.append(
@@ -368,7 +368,7 @@ class ScorecardGenerator:
                     f"authenticity score {video_analysis.video_authenticity_score:.0f}/100"
                 )
 
-        # Auto positive signals
+        
         if corr.tier1_count >= 2:
             pos_signals.insert(0, f"{corr.tier1_count} top-tier outlets (Reuters/BBC-level) independently reporting the same story")
         if ollama.has_named_sources:

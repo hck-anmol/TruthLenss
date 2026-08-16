@@ -24,7 +24,7 @@ class OllamaExtractor:
     def __init__(self, client: Optional[OllamaClient] = None):
         self.client = client or OllamaClient()
 
-    # ── Primary analysis ──────────────────────────────────────────────────
+    
 
     def analyze_article(self, article: ArticleExtraction) -> OllamaAnalysis:
         """
@@ -73,7 +73,7 @@ class OllamaExtractor:
 
         return analysis
 
-    # ── Secondary reasoning pass ──────────────────────────────────────────
+    
 
     def reason_about_credibility(
         self,
@@ -110,14 +110,14 @@ class OllamaExtractor:
             }
         return data
 
-    # ── Helpers ───────────────────────────────────────────────────────────
+    
 
     def _parse_json(self, raw: str) -> Optional[Dict[str, Any]]:
         if not raw:
             return None
-        # Strip <think>...</think> blocks from qwen3 chain-of-thought
+        
         raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
-        # Try code-fenced JSON first
+        
         for pattern in [r"```json\s*(.*?)\s*```", r"```\s*(.*?)\s*```"]:
             m = re.search(pattern, raw, re.DOTALL)
             if m:

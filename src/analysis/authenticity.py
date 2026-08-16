@@ -29,7 +29,7 @@ class AuthenticityAnalyzer:
     ):
         self.llm_analyzer = llm_analyzer or LLMAnalyzer()
         self.evaluator = evaluator or SourceEvaluator()
-        # Corroborator may fail if key is missing; we handle gracefully
+        
         try:
             self.corroborator = corroborator or WebCorroborator()
         except Exception as e:
@@ -40,7 +40,7 @@ class AuthenticityAnalyzer:
         author_verified = len(article.authors) > 0
         has_publish_date = article.publish_date is not None
 
-        # Static domain reputation
+        
         source_score = 0.5
         domain_clean = (article.domain or "").lower().replace("www.", "")
         if domain_clean and any(t in domain_clean for t in HIGH_REPUTATION_DOMAINS):
@@ -48,11 +48,11 @@ class AuthenticityAnalyzer:
         elif domain_clean:
             source_score = 0.65
 
-        # AI-generation likelihood via Ollama
+        
         llm_res = self.llm_analyzer.analyze_authenticity(article.title, article.text)
         ai_likelihood = float(llm_res.get("ai_generated_likelihood", 0.15))
 
-        # ── Live web corroboration via Tavily ─────────────────────────────────
+        
         corroboration_score = 0.15
         trusted_sources_found = 0
         total_results_found = 0

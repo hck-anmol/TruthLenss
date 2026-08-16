@@ -16,24 +16,24 @@ from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Curated master list of globally trusted news and fact-checking domains
+
 TRUSTED_DOMAINS = [
-    # International Wire Services
+    
     "reuters.com", "apnews.com", "afp.com", "bloomberg.com",
 
-    # Major International Broadcasters / Papers
+    
     "bbc.com", "bbc.co.uk", "theguardian.com", "nytimes.com",
     "washingtonpost.com", "economist.com", "ft.com", "wsj.com",
     "theatlantic.com", "npr.org", "pbs.org", "abc.net.au",
 
-    # Science / Health / Research
+    
     "nature.com", "science.org", "sciencedirect.com", "pubmed.ncbi.nlm.nih.gov",
     "who.int", "cdc.gov", "nih.gov", "nasa.gov", "arxiv.org",
 
-    # Fact-Checking organisations
+    
     "snopes.com", "factcheck.org", "politifact.com", "fullfact.org",
 
-    # Government / Academic
+    
     "un.org", "europa.eu", "gov.uk", "congress.gov",
 ]
 
@@ -50,7 +50,7 @@ class WebCorroborator:
             raise ValueError("Tavily API key not set. Add TAVILY_API_KEY to .env")
         self.client = TavilyClient(api_key=key)
 
-    # ── Public API ────────────────────────────────────────────────────────────
+    
 
     def corroborate(self, title: str, text: str, max_results: int = 10) -> Dict[str, Any]:
         """
@@ -91,11 +91,11 @@ class WebCorroborator:
             logger.warning(f"Failed to scrape {url}: {e}")
         return None
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+    
 
     def _build_query(self, title: str, text: str) -> str:
         """Build a focused search query from the article title + key noun phrases."""
-        # Use the title as the primary query; append first 80 chars of text for context
+        
         title_clean = title.strip().strip('"').strip("'")
         context = text[:80].strip().replace("\n", " ")
         return f"{title_clean} {context}"[:200]
@@ -148,13 +148,13 @@ class WebCorroborator:
         elif trusted_count == 1:
             return 0.55
         else:
-            # No trusted sources — penalise based on how many untrusted ones exist
+            
             if total == 0:
-                return 0.15   # Story found nowhere — very suspicious
+                return 0.15   
             elif total <= 2:
-                return 0.25   # Story barely found
+                return 0.25   
             else:
-                return 0.35   # Found on many sites, but none trusted
+                return 0.35   
 
     def _extract_domain(self, url: str) -> str:
         try:

@@ -7,16 +7,16 @@ interface Props {
   sc: CredibilityScorecard;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Node info panel (replaces tooltip — shown on click, pinned to side)
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 interface InfoPanel {
   node: GraphNodeData;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Custom canvas painter — stable, readable at all zoom levels
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 function paintNode(
   node: GraphNodeData,
   ctx: CanvasRenderingContext2D,
@@ -30,7 +30,7 @@ function paintNode(
   const r          = baseR / Math.sqrt(Math.max(globalScale, 0.4));
   const fontSize   = Math.max(9, (node.isSource ? 13 : 10) / globalScale);
 
-  // Outer glow for source OR selected node
+  
   if (node.isSource || isSelected) {
     const glowR = r * (isSelected ? 3.5 : 3);
     const g = ctx.createRadialGradient(node.x!, node.y!, 0, node.x!, node.y!, glowR);
@@ -42,18 +42,18 @@ function paintNode(
     ctx.fill();
   }
 
-  // Main circle
+  
   ctx.beginPath();
   ctx.arc(node.x!, node.y!, r, 0, 2 * Math.PI);
   ctx.fillStyle = node.color;
   ctx.fill();
 
-  // Ring
+  
   ctx.strokeStyle = isSelected ? '#ffffff' : (node.isSource ? '#ffffff' : node.color + 'bb');
   ctx.lineWidth   = (isSelected ? 2.5 : node.isSource ? 2 : 1) / globalScale;
   ctx.stroke();
 
-  // Label — only when zoomed in enough
+  
   if (globalScale > 0.5) {
     const rawLabel = node.label;
     const label    = rawLabel.length > 24 ? rawLabel.slice(0, 22) + '…' : rawLabel;
@@ -65,9 +65,9 @@ function paintNode(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 export default function PropagationGraph({ sc }: Props) {
   const containerRef   = useRef<HTMLDivElement>(null);
   const fgRef          = useRef<any>(null);
@@ -76,18 +76,18 @@ export default function PropagationGraph({ sc }: Props) {
   const [infoPanel, setInfoPanel]   = useState<InfoPanel | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // Build graph data once per scorecard
+  
   const graphData = buildGraphFromScorecard(sc);
 
   const credibleCount    = graphData.nodes.filter(n => !n.isSource && n.color === '#22c55e').length;
   const nonCredibleCount = graphData.nodes.filter(n => !n.isSource && n.color === '#ef4444').length;
 
-  // ── Load library (browser-only) ────────────────────────────────────────────
+  
   useEffect(() => {
     import('react-force-graph-2d').then(mod => setForceGraph(() => mod.default));
   }, []);
 
-  // ── Measure container width responsively ──────────────────────────────────
+  
   useEffect(() => {
     const measure = () => {
       if (containerRef.current) setWidth(containerRef.current.offsetWidth);
@@ -98,22 +98,22 @@ export default function PropagationGraph({ sc }: Props) {
     return () => ro.disconnect();
   }, []);
 
-  // ── Zoom-to-fit once simulation settles ───────────────────────────────────
+  
   useEffect(() => {
     const t = setTimeout(() => fgRef.current?.zoomToFit(600, 40), 800);
     return () => clearTimeout(t);
   }, [ForceGraph, graphData]);
 
-  // ── Node click: show pinned info panel ────────────────────────────────────
+  
   const handleNodeClick = useCallback((node: GraphNodeData) => {
     if (selectedId === node.id) {
-      // toggle off
+      
       setSelectedId(null);
       setInfoPanel(null);
     } else {
       setSelectedId(node.id);
       setInfoPanel({ node });
-      // gentle center (no aggressive zoom)
+      
       fgRef.current?.centerAt(node.x, node.y, 500);
     }
   }, [selectedId]);
@@ -123,7 +123,7 @@ export default function PropagationGraph({ sc }: Props) {
     setInfoPanel(null);
   }, []);
 
-  // ── Escape key closes panel ────────────────────────────────────────────────
+  
   useEffect(() => {
     const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') closePanel(); };
     window.addEventListener('keydown', fn);
@@ -134,7 +134,7 @@ export default function PropagationGraph({ sc }: Props) {
 
   return (
     <div style={{ marginTop: '24px' }}>
-      {/* Section header */}
+      {}
       <p style={{
         fontSize: '11px', fontWeight: 600, color: '#A1A1AA',
         textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
@@ -142,7 +142,7 @@ export default function PropagationGraph({ sc }: Props) {
         Source Verification Network
       </p>
 
-      {/* Graph panel */}
+      {}
       <div
         ref={containerRef}
         style={{
@@ -155,7 +155,7 @@ export default function PropagationGraph({ sc }: Props) {
           border: '1px solid rgba(255,255,255,0.09)',
         }}
       >
-        {/* ── Legend ──────────────────────────────────────────────────────── */}
+        {}
         <div style={{
           position: 'absolute', top: '10px', left: '12px', zIndex: 10,
           display: 'flex', gap: '12px', alignItems: 'center',
@@ -168,7 +168,7 @@ export default function PropagationGraph({ sc }: Props) {
           <LegendDot color="#ef4444" label={`${nonCredibleCount} unverified`} />
         </div>
 
-        {/* ── Controls hint ───────────────────────────────────────────────── */}
+        {}
         <div style={{
           position: 'absolute', bottom: '10px', right: '12px', zIndex: 10,
           fontSize: '10px', color: 'rgba(255,255,255,0.25)',
@@ -177,7 +177,7 @@ export default function PropagationGraph({ sc }: Props) {
           Drag · Scroll to zoom · Click node for details
         </div>
 
-        {/* ── Background-click reset button ───────────────────────────────── */}
+        {}
         {infoPanel && (
           <button
             onClick={closePanel}
@@ -193,7 +193,7 @@ export default function PropagationGraph({ sc }: Props) {
           </button>
         )}
 
-        {/* ── Pinned info panel (shown on node click) ─────────────────────── */}
+        {}
         {infoPanel && (
           <div style={{
             position: 'absolute', bottom: '36px', left: '12px', zIndex: 20,
@@ -205,7 +205,7 @@ export default function PropagationGraph({ sc }: Props) {
             width: '240px',
             backdropFilter: 'blur(12px)',
           }}>
-            {/* Node type badge */}
+            {}
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: '5px',
               marginBottom: '8px',
@@ -223,17 +223,17 @@ export default function PropagationGraph({ sc }: Props) {
               </span>
             </div>
 
-            {/* Domain name */}
+            {}
             <p style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff', marginBottom: '4px', wordBreak: 'break-all' }}>
               {infoPanel.node.label}
             </p>
 
-            {/* Category label */}
+            {}
             <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '10px' }}>
               {infoPanel.node.credLabel}
             </p>
 
-            {/* Score row */}
+            {}
             <div style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               padding: '8px 10px', borderRadius: '7px',
@@ -249,7 +249,7 @@ export default function PropagationGraph({ sc }: Props) {
               </span>
             </div>
 
-            {/* Clickable link */}
+            {}
             <a
               href={`https://${infoPanel.node.label}`}
               target="_blank"
@@ -303,7 +303,7 @@ export default function PropagationGraph({ sc }: Props) {
           </div>
         )}
 
-        {/* ── Loading state ────────────────────────────────────────────────── */}
+        {}
         {!ForceGraph && (
           <div style={{
             position: 'absolute', inset: 0,
@@ -317,7 +317,7 @@ export default function PropagationGraph({ sc }: Props) {
           </div>
         )}
 
-        {/* ── Force graph ──────────────────────────────────────────────────── */}
+        {}
         {ForceGraph && width > 0 && (
           <ForceGraph
             ref={fgRef}
@@ -326,13 +326,13 @@ export default function PropagationGraph({ sc }: Props) {
             graphData={graphData}
             backgroundColor="#0d0f18"
 
-            // ── Node painting ─────────────────────────────────────────────
+            
             nodeCanvasObject={(node: GraphNodeData, ctx: CanvasRenderingContext2D, scale: number) =>
               paintNode(node, ctx, scale, selectedId)
             }
             nodeCanvasObjectMode={() => 'replace'}
 
-            // Larger hit-zone so clicks register easily
+            
             nodePointerAreaPaint={(node: GraphNodeData, color: string, ctx: CanvasRenderingContext2D, scale: number) => {
               if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) return;
               const r = (node.isSource ? 18 : 13) / Math.sqrt(Math.max(scale, 0.4));
@@ -342,35 +342,35 @@ export default function PropagationGraph({ sc }: Props) {
               ctx.fill();
             }}
 
-            // ── Links ─────────────────────────────────────────────────────
+            
             linkColor={(l: any) => l.color}
             linkWidth={0.8}
             linkDirectionalArrowLength={3}
             linkDirectionalArrowRelPos={1}
             linkDirectionalArrowColor={(l: any) => 'rgba(200,200,200,0.35)'}
 
-            // ── Interaction ───────────────────────────────────────────────
+            
             onNodeClick={(node: GraphNodeData) => handleNodeClick(node)}
             onBackgroundClick={() => {
               closePanel();
               fgRef.current?.zoomToFit(600, 40);
             }}
 
-            // ── Simulation physics — calmer, less jittery ─────────────────
+            
             cooldownTicks={150}
             cooldownTime={3000}
             d3AlphaDecay={0.025}
             d3VelocityDecay={0.4}
             onEngineStop={() => fgRef.current?.zoomToFit(600, 40)}
 
-            // ── Min/max zoom ──────────────────────────────────────────────
+            
             minZoom={0.3}
             maxZoom={6}
           />
         )}
       </div>
 
-      {/* Caption */}
+      {}
       <p style={{ fontSize: '11px', color: '#A1A1AA', marginTop: '8px', lineHeight: 1.5 }}>
         Center node = article source. <span style={{ color: '#22c55e' }}>Green</span> = credible (registry score ≥ 70). <span style={{ color: '#ef4444' }}>Red</span> = unverified or below threshold.
         Click any node to see details and open its link.

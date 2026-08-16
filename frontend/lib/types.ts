@@ -6,7 +6,6 @@ export interface DimensionScore {
   summary: string;
 }
 
-/** A web source checked during fact-verification (matches backend CorroboratingSource) */
 export interface CorroboratingSource {
   url: string;
   title: string;
@@ -39,14 +38,14 @@ export interface AdProfile {
 export interface ImageResult {
   url: string;
   fake_probability: number;
-  verdict: string;          // 'REAL' or 'FAKE'
-  gradcam_base64: string;   // data:image/jpeg;base64,... heatmap
+  verdict: string;          
+  gradcam_base64: string;   
 }
 
 export interface ImageAnalysisResult {
   total_images_analyzed: number;
   fake_images_detected: number;
-  image_authenticity_score: number;  // 0-100
+  image_authenticity_score: number;  
   flagged_images: string[];
   results: ImageResult[];
 }
@@ -66,8 +65,8 @@ export interface VideoAnalysisResult {
   anomaly_seconds: number[];
   fake_frame_count: number;
   max_fake_probability: number;
-  video_authenticity_score: number;  // 0-100
-  verdict: string;                   // 'REAL' | 'LIKELY FAKE' | 'FAKE'
+  video_authenticity_score: number;  
+  verdict: string;                   
   frame_results: VideoFrameResult[];
 }
 
@@ -96,11 +95,8 @@ export interface CredibilityScorecard {
   content_tone: string;
   red_flags: string[];
   positive_signals: string[];
-  /** Corroboration from Tavily */
   corroboration?: CorroborationResult;
-  /** Image deepfake analysis — null when no images found */
   image_analysis?: ImageAnalysisResult | null;
-  /** Video deepfake analysis — null when no video found */
   video_analysis?: VideoAnalysisResult | null;
 }
 

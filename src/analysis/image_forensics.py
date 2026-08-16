@@ -10,12 +10,12 @@ import os
 
 from src.schemas.article_schema import ImageAnalysisResult, ImageResult
 
-# Ignore warnings from timm/torch
+
 warnings.filterwarnings("ignore")
 
-# Import deepfake model
+
 try:
-    # We must ensure deepfake_detector is accessible
+    
     from deepfake_detector.src.model import XceptionDetector
     from deepfake_detector.src.dataset import eval_transform
     DEEPFAKE_AVAILABLE = True
@@ -66,9 +66,9 @@ class GradCAM:
         for i, w in enumerate(weights):
             cam += w * activations[i, :, :]
             
-        cam = np.maximum(cam, 0) # ReLU
+        cam = np.maximum(cam, 0) 
         if np.max(cam) != 0:
-            cam = cam / np.max(cam) # Normalize
+            cam = cam / np.max(cam) 
             
         return cam, torch.sigmoid(out).item()
 
@@ -89,7 +89,7 @@ class DeepfakeImageAnalyzer:
         if hasattr(self, '_initialized') and self._initialized:
             return
 
-        # Try multiple known model locations
+        
         if model_path is None:
             for candidate in [
                 "deepfake_detector/models/best_model.pth",
@@ -130,7 +130,7 @@ class DeepfakeImageAnalyzer:
     def download_image(self, url: str) -> np.ndarray:
         try:
             if os.path.exists(url):
-                # It's a local file path
+                
                 img = cv2.imread(url)
                 if img is not None:
                     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -175,7 +175,7 @@ class DeepfakeImageAnalyzer:
             if img is None:
                 continue
                 
-            # Skip tiny images
+            
             if img.shape[0] < 50 or img.shape[1] < 50:
                 continue
                 
@@ -183,17 +183,17 @@ class DeepfakeImageAnalyzer:
                 augmented = eval_transform(image=img)
                 img_tensor = augmented['image'].unsqueeze(0).to(self.device)
                 
-                # Use GradCAM which also gives probability
+                
                 cam, prob = cam_extractor.generate(img_tensor)
                 
-                # Resize cam and apply color map
+                
                 cam_resized = cv2.resize(cam, (img.shape[1], img.shape[0]))
                 heatmap = cv2.applyColorMap(np.uint8(255 * cam_resized), cv2.COLORMAP_JET)
                 
-                # Overlay
+                
                 overlay = cv2.addWeighted(img, 0.5, heatmap, 0.5, 0)
                 
-                # Encode to base64
+                
                 _, buffer = cv2.imencode('.jpg', cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
                 b64 = base64.b64encode(buffer).decode('utf-8')
                 gradcam_b64 = f"data:image/jpeg;base64,{b64}"
@@ -217,10 +217,10 @@ class DeepfakeImageAnalyzer:
             except Exception as e:
                 logger.error(f"Error analyzing image {url}: {e}")
                 
-        # Aggregate score logic (inverse of max fake prob)
+        
         if all_probs:
             max_fake_prob = max(all_probs)
-            # 0% fake prob -> 100 score, 100% fake prob -> 0 score
+            
             result.image_authenticity_score = round((1.0 - max_fake_prob) * 100, 1)
         
         return result

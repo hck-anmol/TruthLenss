@@ -1,9 +1,9 @@
 import type { CredibilityScorecard } from './types';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Registry
-// Scores are heuristic reliability priors (0-100). Threshold = 70.
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
 
 export const CREDIBILITY_THRESHOLD = 70;
 
@@ -509,9 +509,9 @@ export const CREDIBLE_SOURCES: Record<string, { score: number; label: string }> 
   "record.pt":                     { score: 74, label: "Sports News" },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility helpers
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 export function lookupDomain(domain: string): { score: number; label: string } | null {
   return CREDIBLE_SOURCES[domain] ?? null;
@@ -526,9 +526,9 @@ export function getNodeColor(domain: string): string {
   return isDomainCredible(domain) ? '#22c55e' : '#ef4444';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Graph node/link types
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 export interface GraphNodeData {
   id: number;
@@ -555,9 +555,9 @@ export interface PropagationGraphData {
   links: GraphLinkData[];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Synthetic source pools for graph generation when backend doesn't supply URLs
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 
 const HIGH_CRED_POOL = [
   'reuters.com', 'apnews.com', 'bbc.com', 'nytimes.com', 'theguardian.com',
@@ -576,11 +576,7 @@ const LOW_CRED_POOL = [
   'biased-media.net', 'sensational-post.com',
 ];
 
-/**
- * Builds a force-graph dataset from a CredibilityScorecard.
- * Uses `sources_used` if the backend provides them;
- * otherwise falls back to a deterministic synthetic graph.
- */
+
 export function buildGraphFromScorecard(sc: CredibilityScorecard): PropagationGraphData {
   const mainDomain = sc.domain ?? 'unknown-source.com';
   const mainEntry  = CREDIBLE_SOURCES[mainDomain];
@@ -597,8 +593,8 @@ export function buildGraphFromScorecard(sc: CredibilityScorecard): PropagationGr
     credLabel: mainEntry?.label ?? 'Unknown Source',
   }];
 
-  // ── If backend supplies explicit sources, use them ───────────────────────
-  if (sc.corroboration?.top_sources && sc.corroboration.top_sources.length > 0) {
+
+    if (sc.corroboration?.top_sources && sc.corroboration.top_sources.length > 0) {
     sc.corroboration.top_sources.slice(0, 14).forEach((s, i) => {
       const e   = CREDIBLE_SOURCES[s.domain];
       const col = s.trusted ? '#22c55e' : '#ef4444';
@@ -615,8 +611,8 @@ export function buildGraphFromScorecard(sc: CredibilityScorecard): PropagationGr
       });
     });
   } else {
-    // ── Synthetic generation ─────────────────────────────────────────────
-    const score = sc.overall_score;
+
+        const score = sc.overall_score;
     let pool: string[];
 
     if (score >= 70) {
@@ -639,8 +635,8 @@ export function buildGraphFromScorecard(sc: CredibilityScorecard): PropagationGr
       ];
     }
 
-    // Remove the article domain from pool to avoid duplicate
-    const filtered = pool.filter(d => d !== mainDomain).slice(0, 13);
+
+        const filtered = pool.filter(d => d !== mainDomain).slice(0, 13);
     filtered.forEach((domain, i) => {
       const e          = CREDIBLE_SOURCES[domain];
       const isCredible = !!e && e.score >= CREDIBILITY_THRESHOLD;
@@ -657,21 +653,21 @@ export function buildGraphFromScorecard(sc: CredibilityScorecard): PropagationGr
     });
   }
 
-  // ── Build links (BA-like topology) ──────────────────────────────────────
-  const links: GraphLinkData[] = [];
+
+    const links: GraphLinkData[] = [];
   const directSpokes = Math.min(5, nodes.length - 1);
 
-  // Hub-and-spoke from source → first N nodes
-  for (let i = 1; i <= directSpokes; i++) {
+
+    for (let i = 1; i <= directSpokes; i++) {
     links.push({ source: 0, target: i, color: 'rgba(180,180,180,0.25)' });
   }
 
-  // Secondary edges (deterministic, avoids Math.random for reproducibility)
-  for (let i = directSpokes + 1; i < nodes.length; i++) {
+
+    for (let i = directSpokes + 1; i < nodes.length; i++) {
     const base = ((i * 3) % directSpokes) + 1;
     links.push({ source: base, target: i, color: 'rgba(180,180,180,0.15)' });
-    // Occasional cross-link for richer topology
-    if (i % 3 === 0 && i > 2) {
+
+        if (i % 3 === 0 && i > 2) {
       links.push({ source: i - 2, target: i, color: 'rgba(180,180,180,0.10)' });
     }
   }

@@ -7,7 +7,7 @@ import type { CredibilityScorecard } from '@/lib/types';
 const NetworkCanvas = dynamic(() => import('@/components/NetworkCanvas'), { ssr: false });
 const ScorecardModal = dynamic(() => import('@/components/ScorecardModal'), { ssr: false });
 
-// ── Inline mini progress spinner ───────────────────────────────────────────────
+
 function Spinner() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.9s linear infinite' }}>
@@ -16,14 +16,14 @@ function Spinner() {
   );
 }
 
-// ── Verdict badge color ────────────────────────────────────────────────────────
+
 function verdictStyle(verdict: string) {
   if (verdict === 'FAKE') return { bg: '#FEF2F2', color: '#991B1B', border: '#FECACA' };
   if (verdict === 'LIKELY FAKE') return { bg: '#FFFBEB', color: '#92400E', border: '#FDE68A' };
   return { bg: '#F0FDF4', color: '#166534', border: '#BBF7D0' };
 }
 
-// ── Deepfake Upload Panel (used for both image and video) ──────────────────────
+
 
 function DeepfakePanelImage() {
   const [file, setFile] = useState<File | null>(null);
@@ -294,7 +294,7 @@ function DeepfakePanelVideo() {
                 ))}
               </div>
 
-              {/* Verdict */}
+              {}
               {(() => { const vs = verdictStyle(va.verdict); return (
                 <div style={{ padding: '14px 16px', background: vs.bg, border: `1px solid ${vs.border}`, borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '13px', fontWeight: 600, color: vs.color }}>Overall Verdict</span>
@@ -302,7 +302,7 @@ function DeepfakePanelVideo() {
                 </div>
               ); })()}
 
-              {/* Anomaly seconds */}
+              {}
               {va.anomaly_seconds.length > 0 && (
                 <div style={{ padding: '12px 14px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '9px' }}>
                   <p style={{ fontSize: '11px', fontWeight: 700, color: '#C2410C', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
@@ -319,7 +319,7 @@ function DeepfakePanelVideo() {
                 </div>
               )}
 
-              {/* Top suspicious frames */}
+              {}
               {va.frame_results.length > 0 && (
                 <div>
                   <p style={{ fontSize: '11px', fontWeight: 700, color: '#52525B', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Top Suspicious Frames</p>
@@ -372,7 +372,7 @@ function DeepfakePanelVideo() {
   );
 }
 
-// ── Main Landing Page ──────────────────────────────────────────────────────────
+
 export default function LandingPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -386,7 +386,7 @@ export default function LandingPage() {
         .serif { font-family: 'Playfair Display', Georgia, serif; }
       `}</style>
 
-      {/* ── Navbar ─────────────────────────────────────────────────────────── */}
+      {}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50,
         background: 'rgba(248,247,244,0.88)',
@@ -425,7 +425,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+      {}
       <section style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 24px 80px', background: '#F8F7F4', overflow: 'hidden', minHeight: '560px' }}>
         <NetworkCanvas />
         <div style={{ position: 'relative', zIndex: 2, maxWidth: '620px', textAlign: 'center' }}>
@@ -461,7 +461,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Capability strip ───────────────────────────────────────────────── */}
+      {}
       <div style={{ background: '#F2F0EC', borderTop: '1px solid #E8E5DE', borderBottom: '1px solid #E8E5DE', padding: '16px 40px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px', flexWrap: 'wrap' }}>
         {[
           ['NLP Classification', 'Fact & claim extraction'],
@@ -476,7 +476,7 @@ export default function LandingPage() {
         ))}
       </div>
 
-      {/* ── How It Works ───────────────────────────────────────────────────── */}
+      {}
       <section id="how" style={{ background: '#FFFFFF', padding: '80px 24px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '56px' }}>
@@ -504,7 +504,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ───────────────────────────────────────────────────────── */}
+      {}
       <section id="features" style={{ background: '#F8F7F4', padding: '80px 24px', borderTop: '1px solid #E8E5DE' }}>
         <div style={{ maxWidth: '820px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '56px' }}>
@@ -545,7 +545,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Deepfake Detection Section ─────────────────────────────────────── */}
+      {}
       <section id="deepfake" style={{ background: '#FFFFFF', padding: '80px 24px', borderTop: '1px solid #E8E5DE' }}>
         <div style={{ maxWidth: '880px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '56px' }}>
@@ -561,10 +561,10 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Two-panel grid */}
+          {}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', alignItems: 'start' }}>
 
-            {/* Image Panel */}
+            {}
             <div style={{ background: '#F8F7F4', border: '1px solid #E8E5DE', borderRadius: '16px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#EEF2FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -578,7 +578,7 @@ export default function LandingPage() {
               <DeepfakePanelImage />
             </div>
 
-            {/* Video Panel */}
+            {}
             <div style={{ background: '#F8F7F4', border: '1px solid #E8E5DE', borderRadius: '16px', padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#EEF2FA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -595,7 +595,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── CTA ────────────────────────────────────────────────────────────── */}
+      {}
       <section style={{ background: '#1B3A6B', padding: '72px 24px', textAlign: 'center' }}>
         <h2 className="serif" style={{ fontSize: '38px', fontWeight: 700, color: '#FFFFFF', marginBottom: '14px', letterSpacing: '-0.02em' }}>
           Don&apos;t trust — verify.
@@ -614,7 +614,7 @@ export default function LandingPage() {
         </Link>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      {}
       <footer style={{ background: '#FFFFFF', borderTop: '1px solid #E8E5DE', padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

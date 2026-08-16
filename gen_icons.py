@@ -2,12 +2,12 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 def create_icon(size, path):
-    img = Image.new('RGB', (size, size), color=(27, 58, 107)) # #1B3A6B TruthLens blue
+    img = Image.new('RGB', (size, size), color=(27, 58, 107)) 
     d = ImageDraw.Draw(img)
-    # Just draw a simple white circle representing the "lens"
+    
     margin = size // 5
     d.ellipse([margin, margin, size - margin, size - margin], outline="white", width=max(1, size // 16))
-    # A small dot in the center
+    
     center_r = max(2, size // 10)
     d.ellipse([size//2 - center_r, size//2 - center_r, size//2 + center_r, size//2 + center_r], fill="white")
     

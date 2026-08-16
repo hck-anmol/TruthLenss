@@ -9,7 +9,7 @@ class TopicRelevanceAnalyzer:
         title_words = set(re.findall(r'\w+', article.title.lower()))
         text_words = set(re.findall(r'\w+', article.text.lower()))
 
-        # Remove short stopwords
+        
         title_keywords = {w for w in title_words if len(w) > 3}
         if not title_keywords:
             return 1.0

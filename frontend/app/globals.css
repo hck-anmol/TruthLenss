@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design Tokens ──────────────────────────────────────────────── */
+
 :root {
   --bg:           #F8F7F4;
   --bg-dark:      #F2F0EC;
@@ -25,7 +25,7 @@
   --red-border:   #FECACA;
 }
 
-/* ── Base ───────────────────────────────────────────────────────── */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; font-size: 16px; }
 
@@ -38,10 +38,10 @@ body {
   line-height: 1.65;
 }
 
-/* ── Typography ─────────────────────────────────────────────────── */
+
 .serif { font-family: 'Playfair Display', Georgia, serif; }
 
-/* ── Canvas ─────────────────────────────────────────────────────── */
+
 #net-canvas {
   position: absolute;
   inset: 0;
@@ -51,7 +51,7 @@ body {
   opacity: 1;
 }
 
-/* ── Animations ─────────────────────────────────────────────────── */
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(22px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -81,12 +81,12 @@ body {
 .pulse-dot-d1 { animation: pulse 1.4s 0.25s infinite; }
 .pulse-dot-d2 { animation: pulse 1.4s 0.5s  infinite; }
 
-/* ── Scrollbar ──────────────────────────────────────────────────── */
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D4D0C8; border-radius: 10px; }
 
-/* ── Focus ring ─────────────────────────────────────────────────── */
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

@@ -10,12 +10,12 @@ Usage:
 import sys
 import io
 
-# ── Force UTF-8 output so non-ASCII characters (₹, é, ñ, etc.) never crash
-# the process on Windows where the default codepage is cp1252.
-# Primary fix (Python 3.7+): use reconfigure
+
+
+
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-# Fallback for older Python: wrap with TextIOWrapper
+
 elif sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
@@ -63,7 +63,7 @@ def print_scorecard(sc):
     print(f"  SCORE     : {sc.overall_score:.1f} / 100   [ {sc.credibility_rating} ]")
     print(f"  SUMMARY   : {sc.verdict_summary}")
 
-    # ── Dimension breakdown ───────────────────────────────────────────────
+    
     print(f"\n{SEP}")
     print("  DIMENSION BREAKDOWN")
     print(SEP2)
@@ -75,7 +75,7 @@ def print_scorecard(sc):
         if d.summary:
             print(f"  {'':20}   {d.summary[:55]}")
 
-    # ── Ad Profile ────────────────────────────────────────────────────────
+    
     print(f"\n{SEP}")
     print("  AD PROFILE  (Raw HTML analysis)")
     print(SEP2)
@@ -88,7 +88,7 @@ def print_scorecard(sc):
         else:
             print(f"  Clickbait Networks: None detected")
 
-    # ── Ollama extraction results ─────────────────────────────────────────
+    
     print(f"\n{SEP}")
     print("  OLLAMA ANALYSIS  (qwen3:8b — context-aware extraction)")
     print(SEP2)
@@ -123,7 +123,7 @@ def print_scorecard(sc):
         print(f"  Misleading Signs  : {', '.join(sc.misleading_patterns[:3])}")
 
 
-    # ── Corroboration results ─────────────────────────────────────────────
+    
     print(f"\n{SEP}")
     print("  WEB CORROBORATION  (Tavily live search results)")
     print(SEP2)
@@ -148,7 +148,7 @@ def print_scorecard(sc):
             for s in others[:10]:
                 print(f"    [--] {s.domain:<30} {s.title[:45]}")
 
-    # ── Red flags & positive signals ──────────────────────────────────────
+    
     print(f"\n{SEP}")
     print("  SIGNALS")
     print(SEP2)
@@ -166,7 +166,7 @@ def print_scorecard(sc):
     else:
         print("  POSITIVE SIG : None detected")
 
-    # ── Image forensics ──────────────────────────────────────────────────
+    
     if sc.image_analysis:
         ia = sc.image_analysis
         print(f"\n{SEP}")
@@ -181,7 +181,7 @@ def print_scorecard(sc):
             for r in ia.results:
                 tag = "FAKE" if r.verdict == "FAKE" else "REAL"
                 pct = f"{r.fake_probability * 100:.1f}%"
-                # Truncate long URLs
+                
                 url_display = r.url if len(r.url) <= 60 else r.url[:57] + "..."
                 print(f"    [{tag:4s} {pct:>5s}] {url_display}")
 
@@ -215,7 +215,7 @@ def main():
         sys.exit(1)
 
     if args.video and not args.url and not args.text:
-        # Video-only mode — validate the file exists
+        
         import os
         if not os.path.isfile(args.video):
             print(f"Error: video file not found: {args.video}", file=sys.stderr)
@@ -232,7 +232,7 @@ def main():
     else:
         logging.getLogger().setLevel(logging.INFO)
 
-    # In --json mode stdout must be pure JSON — send progress to stderr instead
+    
     _out = sys.stderr if args.json else sys.stdout
     print("\nAnalyzing article...", file=_out)
     print("  Step 1/5 — Extracting article text and images...", file=_out)
@@ -257,11 +257,11 @@ def main():
         sys.exit(1)
 
     if args.json:
-        # Flush the text layer first so buffered prints don't interleave with binary write
+        
         sys.stdout.flush()
-        # Write raw UTF-8 bytes directly to stdout's binary buffer.
-        # This bypasses Windows cp1252 entirely and avoids UnicodeEncodeError
-        # for characters like ₹ (\u20b9), em-dashes, etc.
+        
+        
+        
         json_bytes = scorecard.model_dump_json(indent=2).encode('utf-8')
         sys.stdout.buffer.write(json_bytes)
         sys.stdout.buffer.write(b'\n')

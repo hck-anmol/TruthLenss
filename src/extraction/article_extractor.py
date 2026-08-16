@@ -35,7 +35,7 @@ HEADERS = {
     )
 }
 
-# News aggregators that redirect to the actual article
+
 AGGREGATOR_DOMAINS = {"msn.com", "news.google.com", "flipboard.com", "feedly.com"}
 
 
@@ -43,7 +43,7 @@ class ArticleExtractor:
     def __init__(self, timeout: int = 20):
         self.timeout = timeout
 
-    # ── Public entry point ────────────────────────────────────────────────
+    
 
     def extract(self, article_input: ArticleInput) -> ArticleExtraction:
         if article_input.url:
@@ -56,10 +56,10 @@ class ArticleExtractor:
             )
         raise ValueError("ArticleInput must provide either a url or raw_text.")
 
-    # ── URL extraction ────────────────────────────────────────────────────
+    
 
     def extract_from_url(self, url: str, publisher: Optional[str] = None) -> ArticleExtraction:
-        # Step 1: Resolve the real URL (follow redirects, handle aggregators)
+        
         resolved_url = self._resolve_url(url)
         if resolved_url != url:
             logger.info(f"  Resolved: {url[:60]} -> {resolved_url[:60]}")
@@ -67,8 +67,8 @@ class ArticleExtractor:
         domain = urllib.parse.urlparse(resolved_url).netloc.lower().replace("www.", "")
         uses_https = resolved_url.startswith("https://")
 
-        # Step 2: Try trafilatura
-        # We need the raw HTML for ad analysis before trafilatura strips it
+        
+        
         raw_html = ""
         try:
             resp = requests.get(resolved_url, headers=HEADERS, timeout=self.timeout)
@@ -79,27 +79,27 @@ class ArticleExtractor:
 
         title, text, authors, publish_date = self._try_trafilatura_html(raw_html, resolved_url)
 
-        # Step 3: Fallback to newspaper3k
+        
         if not text and NEWSPAPER_AVAILABLE:
             logger.info(f"  trafilatura empty, trying newspaper3k...")
             title, text, authors, publish_date = self._try_newspaper(resolved_url, title)
 
-        # Step 4: Fallback to BeautifulSoup
+        
         if not text:
             logger.info(f"  newspaper3k empty, trying BeautifulSoup...")
             title, text = self._try_beautifulsoup(resolved_url, title)
 
-        # Calculate word count first, then use it in checks
+        
         word_count = len(text.split()) if text else 0
 
-        # Step 5: Analyze Ads on the raw HTML
+        
         ad_profile = self._analyze_ads(raw_html, word_count)
         if ad_profile.total_ad_slots > 0:
             logger.info(f"  Ads detected: {ad_profile.total_ad_slots} slots | Density: {ad_profile.ad_density:.2f} per 100 words")
             if ad_profile.has_clickbait_ads:
                 logger.info(f"  Clickbait networks found: {', '.join(ad_profile.clickbait_networks_found)}")
 
-        # Check if this is a JS-only site that returned no usable content
+        
         JS_ONLY_DOMAINS = {"msn.com", "news.google.com", "flipboard.com"}
         if word_count < 30 and any(js in domain for js in JS_ONLY_DOMAINS):
             raise ValueError(
@@ -110,14 +110,14 @@ class ArticleExtractor:
                 f"  address bar after the page fully loads — it often redirects to the real source."
             )
 
-        # Step 6: Extract image URLs (filtering out ads, icons, tracking pixels)
+        
         image_urls = self._extract_image_urls(raw_html, resolved_url) if raw_html else []
         if image_urls:
             logger.info(f"  Found {len(image_urls)} content images for analysis")
 
-        # NOTE: Video extraction from articles is intentionally disabled.
-        # Per workflow: video analysis is only available as a standalone upload feature.
-        # Videos embedded in articles are ignored.
+        
+        
+        
         video_urls: list = []
 
         return ArticleExtraction(
@@ -136,7 +136,7 @@ class ArticleExtractor:
         )
 
 
-    # ── Raw text ──────────────────────────────────────────────────────────
+    
 
     def extract_from_raw_text(
         self,
@@ -158,7 +158,7 @@ class ArticleExtractor:
             word_count=len(raw_text.split()),
         )
 
-    # ── URL resolution (handles MSN / aggregators) ────────────────────────
+    
 
     def _resolve_url(self, url: str) -> str:
         """
@@ -170,7 +170,7 @@ class ArticleExtractor:
                                 allow_redirects=True)
             final_url = resp.url
 
-            # Check if we landed on an aggregator — try to find the real source
+            
             final_domain = urllib.parse.urlparse(final_url).netloc.lower().replace("www.", "")
             if any(agg in final_domain for agg in AGGREGATOR_DOMAINS):
                 real_url = self._extract_canonical_url(resp.text, final_url)
@@ -191,31 +191,31 @@ class ArticleExtractor:
         try:
             soup = BeautifulSoup(html, "html.parser")
 
-            # 1. og:url meta tag (most reliable)
+            
             og_url = soup.find("meta", property="og:url")
             if og_url and og_url.get("content"):
                 candidate = og_url["content"].strip()
                 if candidate.startswith("http") and "msn.com" not in candidate:
                     return candidate
 
-            # 2. canonical link tag
+            
             canonical = soup.find("link", rel="canonical")
             if canonical and canonical.get("href"):
                 candidate = canonical["href"].strip()
                 if candidate.startswith("http") and "msn.com" not in candidate:
                     return candidate
 
-            # 3. MSN-specific: data-original-url attribute in article body
+            
             for tag in soup.find_all(attrs={"data-original-url": True}):
                 candidate = tag["data-original-url"]
                 if candidate.startswith("http"):
                     return candidate
 
-            # 4. Look for an outbound link that looks like the source article
+            
             for a in soup.find_all("a", href=True):
                 href = a["href"]
                 if href.startswith("http") and "msn.com" not in href:
-                    # Match links that look like article URLs (not ads/nav)
+                    
                     if re.search(r"/(article|news|story|post|world|tech|business)/", href):
                         return href
 
@@ -224,11 +224,11 @@ class ArticleExtractor:
 
         return None
 
-    # ── Extraction backends ───────────────────────────────────────────────
+    
 
     def _try_trafilatura_html(self, html: str, url: str) -> Tuple:
         if not html:
-            # Fallback to fetching it directly via trafilatura if requests failed
+            
             return self._try_trafilatura(url)
         try:
             metadata = trafilatura.extract_metadata(html)
@@ -281,14 +281,14 @@ class ArticleExtractor:
 
             title = fallback_title
             if not title:
-                # Try og:title first, then <title>
+                
                 og_title = soup.find("meta", property="og:title")
                 if og_title and og_title.get("content"):
                     title = og_title["content"].strip()
                 elif soup.title:
                     title = soup.title.string.strip()
 
-            # Extract paragraphs from main content areas first
+            
             content_tags = soup.find_all(
                 ["article", "main", "div"],
                 class_=re.compile(r"(article|content|story|body|text)", re.I)
@@ -308,7 +308,7 @@ class ArticleExtractor:
             logger.warning(f"  BeautifulSoup fallback failed: {e}")
             return fallback_title or "Untitled", ""
 
-    # ── Video URL Extraction ───────────────────────────────────────────────
+    
 
     def _extract_video_urls(self, html: str, base_url: str) -> list:
         """
@@ -326,7 +326,7 @@ class ArticleExtractor:
         try:
             soup = BeautifulSoup(html, "html.parser")
 
-            # ── 1. Direct <video> and <source> tags ───────────────────────
+            
             for tag in soup.find_all(["video", "source"]):
                 src = tag.get("src") or tag.get("data-src") or ""
                 if src and not src.startswith("data:"):
@@ -335,7 +335,7 @@ class ArticleExtractor:
                         seen.add(abs_src)
                         video_urls.append(abs_src)
 
-            # ── 2. YouTube / Vimeo iframes ────────────────────────────────
+            
             yt_pattern    = re.compile(r"(?:youtube\.com/embed/|youtu\.be/)([A-Za-z0-9_-]{11})", re.I)
             vimeo_pattern = re.compile(r"vimeo\.com/(?:video/)?(\d+)", re.I)
 
@@ -360,9 +360,9 @@ class ArticleExtractor:
         except Exception as exc:
             logger.warning(f"  Video URL extraction error: {exc}")
 
-        return video_urls[:3]   # cap at 3 videos per article
+        return video_urls[:3]   
 
-    # ── Ad Analysis ───────────────────────────────────────────────────────
+    
 
     def _analyze_ads(self, html: str, word_count: int) -> AdProfile:
         """
@@ -375,12 +375,12 @@ class ArticleExtractor:
         ad_count = 0
         clickbait_networks = set()
 
-        # 1. Standard ad slots (Google AdSense, generic ad containers)
+        
         ad_count += len(soup.find_all("ins", class_="adsbygoogle"))
         ad_count += len(soup.find_all(class_=re.compile(r"(ad-container|advertisement|ad-slot|ad_unit)", re.I)))
         ad_count += len(soup.find_all(id=re.compile(r"(ad-container|advertisement|ad-slot|ad_unit)", re.I)))
 
-        # 2. Clickbait / Chumbox networks (scripts and iframes)
+        
         clickbait_patterns = {
             "taboola": re.compile(r"taboola\.com", re.I),
             "outbrain": re.compile(r"outbrain\.com", re.I),
@@ -402,10 +402,10 @@ class ArticleExtractor:
                     clickbait_networks.add(network)
                     ad_count += 1
         
-        # Deduplicate network list
+        
         networks_list = list(clickbait_networks)
         
-        # Calculate ad density (ads per 100 words)
+        
         ad_density = 0.0
         if word_count > 0:
             ad_density = round((ad_count / word_count) * 100, 2)
@@ -417,9 +417,9 @@ class ArticleExtractor:
             ad_density=ad_density
         )
 
-    # ── Image URL extraction (with ad filtering) ──────────────────────────
+    
 
-    # Domains / URL patterns that indicate ad or tracking images
+    
     _AD_IMAGE_PATTERNS = re.compile(
         r'(doubleclick\.net|googlesyndication\.com|googleadservices\.com'
         r'|facebook\.com/tr|pixel\.quantserve|scorecardresearch\.com'
@@ -429,14 +429,14 @@ class ArticleExtractor:
         r'|1x1|spacer|pixel|blank\.gif|clear\.gif)', re.I
     )
 
-    # CSS class / id patterns for ad containers
+    
     _AD_CONTAINER_PATTERNS = re.compile(
         r'(ad-container|advertisement|ad-slot|ad_unit|adsbygoogle'
         r'|taboola|outbrain|mgid|revcontent|sponsored|promo-|sidebar-ad'
         r'|banner-ad|dfp-ad|ad-wrapper|ad-block|commercial)', re.I
     )
 
-    # Filename patterns for icons, logos, social buttons
+    
     _ICON_PATTERNS = re.compile(
         r'(favicon|logo|icon|badge|avatar|sprite|button|arrow'
         r'|share|social|twitter|facebook|whatsapp|pinterest|linkedin'
@@ -457,14 +457,14 @@ class ArticleExtractor:
         seen = set()
         image_urls = []
 
-        # First, mark all ad container elements so we can skip images inside them
+        
         ad_containers = set()
         for tag in soup.find_all(True):
             classes = " ".join(tag.get("class", []))
             tag_id = tag.get("id", "")
             if self._AD_CONTAINER_PATTERNS.search(classes) or self._AD_CONTAINER_PATTERNS.search(tag_id):
                 ad_containers.add(id(tag))
-                # Also mark all descendants
+                
                 for child in tag.descendants:
                     if hasattr(child, 'name'):
                         ad_containers.add(id(child))
@@ -491,19 +491,19 @@ class ArticleExtractor:
             """Returns True if the URL looks like a real content image."""
             if not url:
                 return False
-            # Skip non-http URLs
+            
             if not url.startswith(('http://', 'https://')):
                 return False
-            # Skip ad / tracking domains
+            
             if self._AD_IMAGE_PATTERNS.search(url):
                 return False
-            # Skip icons, logos, social buttons
-            if self._ICON_PATTERNS.search(url.split('?')[0]):  # check path only
+            
+            if self._ICON_PATTERNS.search(url.split('?')[0]):  
                 return False
-            # Skip SVG files (usually icons/logos)
+            
             if url.lower().split('?')[0].endswith('.svg'):
                 return False
-            # Skip tiny dimension hints in the tag (tracking pixels)
+            
             if tag:
                 w = tag.get('width', '')
                 h = tag.get('height', '')
@@ -516,7 +516,7 @@ class ArticleExtractor:
                     pass
             return True
 
-        # 1. og:image meta tag (high priority — article hero image)
+        
         og_img = soup.find("meta", property="og:image")
         if og_img and og_img.get("content"):
             url = _normalize_url(og_img["content"])
@@ -524,19 +524,19 @@ class ArticleExtractor:
                 image_urls.append(url)
                 seen.add(url)
 
-        # 2. Content area images — prefer <article>, <main>, content divs
+        
         content_areas = soup.find_all(
             ["article", "main", "div"],
             class_=re.compile(r"(article|content|story|body|text|post)", re.I)
         )
 
-        # If no content area found, fall back to body
+        
         if not content_areas:
             content_areas = [soup.body] if soup.body else [soup]
 
         for area in content_areas:
             for img_tag in area.find_all("img"):
-                # Skip if inside ad container
+                
                 if _is_inside_ad(img_tag):
                     continue
 
@@ -546,16 +546,16 @@ class ArticleExtractor:
                     image_urls.append(url)
                     seen.add(url)
 
-                # Also check srcset for higher-res versions
+                
                 srcset = img_tag.get("srcset", "")
-                if srcset and not image_urls:  # only if we haven't found the main src
-                    # Pick the largest from srcset
+                if srcset and not image_urls:  
+                    
                     parts = [s.strip().split()[0] for s in srcset.split(",") if s.strip()]
-                    for part in parts[:1]:  # just the first/largest
+                    for part in parts[:1]:  
                         url = _normalize_url(part)
                         if url and _is_valid_content_image(url, img_tag) and url not in seen:
                             image_urls.append(url)
                             seen.add(url)
 
-        # Cap at 10 images to avoid excessive downloads
+        
         return image_urls[:10]

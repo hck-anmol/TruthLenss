@@ -8,11 +8,11 @@ import type { CredibilityScorecard } from '@/lib/types';
 const LoadingSteps   = dynamic(() => import('@/components/LoadingSteps'),   { ssr: false });
 const ScorecardModal = dynamic(() => import('@/components/ScorecardModal'), { ssr: false });
 
-// Modes available in the article analysis page:
-//  url   → article URL (text + images analyzed)
-//  text  → raw article text (text analyzed)
-//  image → upload an image for standalone deepfake detection
-// NOTE: Video tab is removed — video deepfake is on the main page's dedicated section.
+
+
+
+
+
 type ArticleAnalysisMode = 'url' | 'text' | 'image';
 
 export default function AnalyzePage() {
@@ -35,19 +35,19 @@ export default function AnalyzePage() {
 
   const submit = async () => {
     setError(''); setStage('loading'); setStep(1);
-    // Advance step counter every ~80 seconds to show progress
+    
     const tmr = setInterval(() => setStep((s) => Math.min(s + 1, 3)), 80000);
 
     try {
       let res: Response;
 
       if (mode === 'image' && imageFile) {
-        // Standalone image deepfake → /api/deepfake
+        
         const form = new FormData();
         form.append('image', imageFile);
         res = await fetch('/api/deepfake', { method: 'POST', body: form });
       } else {
-        // URL / text → /api/analyze as JSON
+        
         const body: Record<string, string> = {};
         if (mode === 'url')  body.url  = url;
         if (mode === 'text') body.text = text;
@@ -102,7 +102,7 @@ export default function AnalyzePage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F8F7F4', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* ── Navbar ─────────────────────────────────────────────────────── */}
+      {}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50,
         background: 'rgba(248,247,244,0.88)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
@@ -140,7 +140,7 @@ export default function AnalyzePage() {
         </div>
       </nav>
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
+      {}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 24px' }}>
         <div style={{ width: '100%', maxWidth: '600px' }}>
 
@@ -155,10 +155,10 @@ export default function AnalyzePage() {
                 </p>
               </div>
 
-              {/* Card */}
+              {}
               <div style={{ background: '#FFFFFF', border: '1px solid #E8E5DE', borderRadius: '14px', overflow: 'hidden', boxShadow: '0 4px 32px rgba(0,0,0,0.03)' }}>
 
-                {/* Tabs */}
+                {}
                 <div style={{ display: 'flex', borderBottom: '1px solid #E8E5DE' }}>
                   {tabs.map((t) => (
                     <button
@@ -179,10 +179,10 @@ export default function AnalyzePage() {
                   ))}
                 </div>
 
-                {/* Input area */}
+                {}
                 <div style={{ padding: '24px' }}>
 
-                  {/* URL Mode */}
+                  {}
                   {mode === 'url' && (
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#52525B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -209,7 +209,7 @@ export default function AnalyzePage() {
                     </div>
                   )}
 
-                  {/* Text Mode */}
+                  {}
                   {mode === 'text' && (
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#52525B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -235,7 +235,7 @@ export default function AnalyzePage() {
                     </div>
                   )}
 
-                  {/* Image Mode */}
+                  {}
                   {mode === 'image' && (
                     <div
                       id="image-drop-zone"
@@ -290,7 +290,7 @@ export default function AnalyzePage() {
                   )}
                 </div>
 
-                {/* Submit */}
+                {}
                 <div style={{ padding: '0 24px 24px' }}>
                   <button
                     id="submit-btn"
@@ -318,7 +318,7 @@ export default function AnalyzePage() {
                 </div>
               </div>
 
-              {/* Tip box */}
+              {}
               <div style={{
                 marginTop: '20px', padding: '14px 18px',
                 background: 'rgba(27,58,107,0.04)', border: '1px solid rgba(27,58,107,0.1)',
@@ -375,7 +375,7 @@ export default function AnalyzePage() {
         </div>
       </div>
 
-      {/* Scorecard modal */}
+      {}
       {show && sc && <ScorecardModal sc={sc} onClose={() => setShow(false)} />}
     </div>
   );

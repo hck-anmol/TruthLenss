@@ -10,7 +10,7 @@ class LLMAnalyzer:
         prompt = CLICKBAIT_PROMPT_TEMPLATE.format(title=title, text_excerpt=text[:500])
         result = self.client.generate_json(prompt)
         if "clickbait_score" not in result:
-            result["clickbait_score"] = 0.3  # fallback baseline
+            result["clickbait_score"] = 0.3  
             result["reasons"] = result.get("reasons", ["Baseline automated assessment"])
         return result
 

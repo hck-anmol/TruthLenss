@@ -16,38 +16,38 @@ from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# ── Trusted Domain Lists ──────────────────────────────────────────────────────
+
 
 TIER_1_DOMAINS: Set[str] = {
-    # International wire services — gold standard
+    
     "reuters.com", "apnews.com", "afp.com", "bloomberg.com",
-    # Top international broadcasters / newspapers
+    
     "bbc.com", "bbc.co.uk", "theguardian.com", "nytimes.com",
     "washingtonpost.com", "wsj.com", "ft.com", "economist.com",
-    # Science / health / government
+    
     "nature.com", "science.org", "who.int", "cdc.gov",
     "nih.gov", "nasa.gov", "pubmed.ncbi.nlm.nih.gov",
-    # Fact-checking
+    
     "snopes.com", "factcheck.org", "politifact.com", "fullfact.org",
 }
 
 TIER_2_DOMAINS: Set[str] = {
-    # Established international outlets
+    
     "theatlantic.com", "npr.org", "pbs.org", "vox.com", "axios.com",
     "abc.net.au", "cbc.ca", "abc.go.com", "nbcnews.com", "cbsnews.com",
     "abcnews.go.com", "usatoday.com", "time.com", "forbes.com",
     "businessinsider.com", "thehill.com", "politico.com",
-    # International
+    
     "dw.com", "aljazeera.com", "france24.com", "scmp.com",
-    # Academic / research
+    
     "sciencedirect.com", "arxiv.org", "jstor.org", "springer.com",
-    # Government / intergovernmental
+    
     "un.org", "europa.eu", "gov.uk", "congress.gov",
 }
 
 ALL_TRUSTED = TIER_1_DOMAINS | TIER_2_DOMAINS
 
-# Domains that are known unreliable — hard penalty
+
 KNOWN_UNRELIABLE: Set[str] = {
     "infowars.com", "naturalnews.com", "beforeitsnews.com",
     "worldnewsdailyreport.com", "theonion.com", "clickhole.com",
@@ -80,7 +80,7 @@ class TavilyCorroborator:
                 settings.tavily_api_key_4,
                 settings.tavily_api_key_5,
             ]
-            keys = [k for k in keys if k]   # drop empty / unset
+            keys = [k for k in keys if k]   
 
         if not keys:
             raise ValueError(
@@ -89,7 +89,7 @@ class TavilyCorroborator:
             )
 
         self._clients: List[TavilyClient] = [TavilyClient(api_key=k) for k in keys]
-        # Infinite round-robin iterator over clients
+        
         self._client_cycle: Iterator[TavilyClient] = itertools.cycle(self._clients)
 
         logger.info(
@@ -97,7 +97,7 @@ class TavilyCorroborator:
             f"[round-robin across queries]"
         )
 
-    # ── Main entry point ──────────────────────────────────────────────────
+    
 
     def corroborate(
         self,
@@ -116,7 +116,7 @@ class TavilyCorroborator:
         if not search_queries:
             search_queries = [article_title[:150]]
 
-        # Always include the article title itself as one search
+        
         queries_to_run = list(dict.fromkeys([article_title[:150]] + search_queries))[:5]
 
         all_results: List[CorroboratingSource] = []
@@ -126,7 +126,7 @@ class TavilyCorroborator:
         for idx, query in enumerate(queries_to_run):
             if len(all_results) >= self.MAX_TOTAL_RESULTS:
                 break
-            # Pick the next client in round-robin order
+            
             client = next(self._client_cycle)
             key_index = (idx % len(self._clients)) + 1
             logger.debug(f"  Query {idx+1}/{len(queries_to_run)} → key slot {key_index}: '{query[:60]}'")
@@ -137,11 +137,11 @@ class TavilyCorroborator:
             for r in results:
                 seen_urls.add(r.url)
 
-        # Sort: trusted first, then by relevance score
+        
         all_results.sort(key=lambda r: (-r.tier, -r.relevance_score))
         top_50 = all_results[:self.MAX_TOTAL_RESULTS]
 
-        # Count tiers
+        
         tier1 = [r for r in top_50 if r.tier == 1]
         tier2 = [r for r in top_50 if r.tier == 2]
         trusted = tier1 + tier2
@@ -160,7 +160,7 @@ class TavilyCorroborator:
             search_queries_used=queries_used,
         )
 
-    # ── Search helpers ────────────────────────────────────────────────────
+    
 
     def _search_one_query(
         self, query: str, seen_urls: Set[str], client: TavilyClient
@@ -196,15 +196,15 @@ class TavilyCorroborator:
             logger.error(f"Tavily search failed for query '{query[:60]}': {e}")
             return []
 
-    # ── Scoring ───────────────────────────────────────────────────────────
+    
 
     def _compute_score(self, tier1: int, tier2: int, total: int) -> float:
         if total == 0:
             return 0.10
 
-        score = 0.15   # base
+        score = 0.15   
 
-        # Tier 1 contributions (heavy weight)
+        
         if tier1 >= 5:
             score += 0.65
         elif tier1 >= 3:
@@ -214,7 +214,7 @@ class TavilyCorroborator:
         elif tier1 == 1:
             score += 0.28
 
-        # Tier 2 contributions (moderate weight)
+        
         if tier2 >= 5:
             score += 0.20
         elif tier2 >= 3:
@@ -222,7 +222,7 @@ class TavilyCorroborator:
         elif tier2 >= 1:
             score += 0.05
 
-        # Penalty: many results but none trusted
+        
         if tier1 == 0 and tier2 == 0:
             score = max(0.10, score - 0.10)
 
@@ -240,14 +240,14 @@ class TavilyCorroborator:
         else:
             return "Not corroborated — no trusted news outlet found covering this story"
 
-    # ── Utils ─────────────────────────────────────────────────────────────
+    
 
     def _classify_tier(self, domain: str) -> int:
         if any(t in domain for t in TIER_1_DOMAINS):
             return 1
         if any(t in domain for t in TIER_2_DOMAINS):
             return 2
-        # Generic .gov and .edu get tier 2
+        
         if domain.endswith(".gov") or domain.endswith(".edu"):
             return 2
         return 0

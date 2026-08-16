@@ -43,46 +43,46 @@ class ClickbaitDetector:
         score = 0.0
         reasons = []
 
-        # Clickbait keyword detection
+        
         matched_kw = [kw for kw in self.CLICKBAIT_KEYWORDS if kw in title_lower]
         if matched_kw:
             score += 0.35
             reasons.append(f"Clickbait phrase(s) detected: {', '.join(matched_kw)}")
 
-        # ALL CAPS ratio
+        
         alpha_chars = [c for c in title if c.isalpha()]
         if alpha_chars and (sum(1 for c in alpha_chars if c.isupper()) / len(alpha_chars)) > 0.4:
             score += 0.25
             reasons.append("Excessive uppercase lettering in headline")
 
-        # Punctuation stacking
+        
         if re.search(r'[!?]{1,}', title):
             score += 0.15
             reasons.append("Exclamation/question marks in title")
 
-        # Numbered list bait
+        
         if re.search(r'\b\d+\s+(reasons?|things?|ways?|facts?|tips?|tricks?)\b', title_lower):
             score += 0.15
             reasons.append("Numbered list clickbait pattern")
 
-        # Curiosity gap phrasing
+        
         if re.search(r'\b(what|who|why|how).{0,30}(next|shocked|surprised|happened)\b', title_lower):
             score += 0.15
             reasons.append("Curiosity gap phrasing detected")
 
-        # Emoji detection
+        
         emoji_count = self._count_emojis(title)
         if emoji_count > 0:
             score += min(emoji_count * 0.05, 0.2)
             reasons.append(f"{emoji_count} emoji(s) found in title")
 
-        # Emotional words
+        
         emotional_words = self._find_emotional_words(title)
         if emotional_words:
             score += min(len(emotional_words) * 0.1, 0.25)
             reasons.append(f"Emotional trigger words: {', '.join(emotional_words)}")
 
-        # Blend with LLM
+        
         llm_res = self.llm_analyzer.analyze_clickbait(title, text[:500])
         llm_score = llm_res.get("clickbait_score", 0.3)
         llm_reasons = llm_res.get("reasons", [])
@@ -98,6 +98,6 @@ class ClickbaitDetector:
             clickbait_reasons=combined_reasons
         )
 
-    # backward-compatible alias
+    
     def analyze(self, article) -> TitleAnalysis:
         return self.analyze_title(article.title, article.text)

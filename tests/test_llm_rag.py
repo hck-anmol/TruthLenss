@@ -5,7 +5,7 @@ from src.rag.retriever import DocumentRetriever
 from src.rag.rag_pipeline import RAGPipeline
 
 def test_ollama_client_fallback():
-    client = OllamaClient(base_url="http://localhost:99999")  # Intentional offline port
+    client = OllamaClient(base_url="http://localhost:99999")  
     res = client.generate("Hello test")
     assert "[Ollama Unavailable]" in res
 

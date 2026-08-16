@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 
-# ── 1. Input ────────────────────────────────────────────────────────────────
+
 
 class ArticleInput(BaseModel):
     """Input provided by the user to analyze."""
@@ -27,10 +27,10 @@ class AdProfile(BaseModel):
     total_ad_slots: int = 0
     has_clickbait_ads: bool = False
     clickbait_networks_found: List[str] = Field(default_factory=list)
-    ad_density: float = 0.0  # ratio of ads per 100 words
+    ad_density: float = 0.0  
 
 
-# ── 2. Raw Extraction (from URL / text) ────────────────────────────────────
+
 
 class ArticleExtraction(BaseModel):
     url: Optional[str] = None
@@ -43,69 +43,69 @@ class ArticleExtraction(BaseModel):
     uses_https: bool = False
     word_count: int = 0
     ad_profile: AdProfile = Field(default_factory=AdProfile)
-    # Image URLs extracted from the article HTML
+    
     image_urls: List[str] = Field(default_factory=list)
-    # Video URLs found in article (src of <video> tags, YouTube iframes, etc.)
+    
     video_urls: List[str] = Field(default_factory=list)
-    # kept for legacy compatibility
+    
     meta_keywords: List[str] = Field(default_factory=list)
     meta_description: Optional[str] = None
     outbound_links: List[str] = Field(default_factory=list)
-    # backward compat alias fields
+    
     top_image: Optional[str] = None
     num_ads_estimated: int = 0
     ad_ratio: float = 0.0
     ad_details: List[Dict[str, Any]] = Field(default_factory=list)
 
 
-# Keep old name as alias so existing code doesn't break
+
 ExtractedArticle = ArticleExtraction
 
 
-# ── 3. Ollama Analysis ──────────────────────────────────────────────────────
+
 
 class OllamaAnalysis(BaseModel):
     """Structured output from Ollama (qwen3:8b) after reading the article."""
 
-    # Step 1: Core context — what is this article ACTUALLY about?
+    
     article_context: str = Field(default="",
         description="1-2 sentence summary of the core topic of the article")
 
-    # Step 2: Context-filtered facts
+    
     relevant_facts: List[str] = Field(default_factory=list,
         description="Verifiable facts that are directly related to the core context")
     irrelevant_facts: List[str] = Field(default_factory=list,
         description="Facts/statements that are unrelated to the core context of the article")
 
-    # What the article claims / asserts
+    
     main_claims: List[str] = Field(default_factory=list,
         description="Major assertions or conclusions the article makes")
 
-    # Headline / topic signals for Tavily search
+    
     search_queries: List[str] = Field(default_factory=list,
         description="3-5 focused search queries derived from the article for Tavily")
 
-    # Language quality signals
+    
     emotional_phrases: List[str] = Field(default_factory=list,
         description="Emotionally charged, sensational, or fear-inducing phrases")
     clickbait_elements: List[str] = Field(default_factory=list,
         description="Clickbait techniques: curiosity gaps, exaggeration, ALL CAPS misuse, etc.")
 
-    # Bias / misleading flags
+    
     bias_indicators: List[str] = Field(default_factory=list,
         description="One-sided language, absolutist statements, propaganda phrases")
     misleading_patterns: List[str] = Field(default_factory=list,
         description="Patterns that suggest misinformation: miracle cures, hidden secrets, etc.")
 
-    # Content quality summary
+    
     has_named_sources: bool = False
     has_statistics: bool = False
     has_expert_quotes: bool = False
-    content_tone: str = "neutral"    # neutral / fear / anger / positive / sensational
-    language_quality: str = "normal" # normal / poor / professional
+    content_tone: str = "neutral"    
+    language_quality: str = "normal" 
 
 
-# ── 4. Single Corroborating Source ─────────────────────────────────────────
+
 
 class CorroboratingSource(BaseModel):
     url: str
@@ -113,12 +113,12 @@ class CorroboratingSource(BaseModel):
     domain: str
     snippet: str = ""
     trusted: bool = False
-    tier: int = 0          # 1 = top-tier (Reuters/BBC), 2 = secondary, 0 = unknown
-    search_query: str = "" # which query found this result
+    tier: int = 0          
+    search_query: str = "" 
     relevance_score: float = 0.0
 
 
-# ── 5. Corroboration Result (from Tavily) ──────────────────────────────────
+
 
 class CorroborationResult(BaseModel):
     total_sources_found: int = 0
@@ -131,50 +131,50 @@ class CorroborationResult(BaseModel):
     search_queries_used: List[str] = Field(default_factory=list)
 
 
-# ── 5b. Image Analysis (deepfake detection) ────────────────────────────────
+
 
 class ImageResult(BaseModel):
     """Result for a single analyzed image."""
     url: str
-    fake_probability: float       # 0.0 (real) to 1.0 (fake)
-    verdict: str                  # "REAL" or "FAKE"
-    gradcam_base64: str = ""      # data:image/jpeg;base64,... heatmap overlay
+    fake_probability: float       
+    verdict: str                  
+    gradcam_base64: str = ""      
 
 class ImageAnalysisResult(BaseModel):
     """Aggregated results from deepfake detection across all article images."""
     total_images_analyzed: int = 0
     fake_images_detected: int = 0
-    image_authenticity_score: float = 100.0   # 0-100
+    image_authenticity_score: float = 100.0   
     flagged_images: List[str] = Field(default_factory=list)
     results: List[ImageResult] = Field(default_factory=list)
 
 
 
-# ── 5c. Video Analysis (deepfake detection on video frames) ────────────────
+
 
 class VideoFrameResult(BaseModel):
     """Prediction for a single sampled frame."""
-    second: int                    # which second of the video this frame came from
-    frame_index: int               # index within that second's samples
-    fake_probability: float        # 0.0 (real) → 1.0 (fake)
-    is_anomaly_burst: bool = False # True = part of high-density anomaly burst
-    gradcam_base64: str = ""       # Heatmap for top 10 worst frames
+    second: int                    
+    frame_index: int               
+    fake_probability: float        
+    is_anomaly_burst: bool = False 
+    gradcam_base64: str = ""       
 
 
 class VideoAnalysisResult(BaseModel):
     """Aggregated deepfake analysis for a single video."""
-    source: str                              # original URL or "uploaded"
+    source: str                              
     duration_seconds: float = 0.0
     total_frames_analyzed: int = 0
-    anomaly_seconds: List[int] = Field(default_factory=list)  # seconds that triggered burst
+    anomaly_seconds: List[int] = Field(default_factory=list)  
     fake_frame_count: int = 0
     max_fake_probability: float = 0.0
-    video_authenticity_score: float = 100.0  # 0–100
-    verdict: str = "REAL"                    # "REAL" / "LIKELY FAKE" / "FAKE"
+    video_authenticity_score: float = 100.0  
+    verdict: str = "REAL"                    
     frame_results: List[VideoFrameResult] = Field(default_factory=list)
 
 
-# ── 5d. Title / Clickbait Analysis ─────────────────────────────────────────
+
 
 class TitleAnalysis(BaseModel):
     """Structured output from clickbait/title analysis."""
@@ -185,18 +185,18 @@ class TitleAnalysis(BaseModel):
     clickbait_reasons: List[str] = Field(default_factory=list)
 
 
-# ── 6. Final Scorecard ──────────────────────────────────────────────────────
+
 
 class DimensionScore(BaseModel):
     name: str
-    score: float           # 0–100
-    weight: float          # 0–1
-    contribution: float    # score * weight
+    score: float           
+    weight: float          
+    contribution: float    
     summary: str = ""
 
 
 class CredibilityScorecard(BaseModel):
-    # Article metadata
+    
     url: Optional[str] = None
     title: str
     domain: Optional[str] = None
@@ -204,19 +204,19 @@ class CredibilityScorecard(BaseModel):
     authors: List[str] = Field(default_factory=list)
     publish_date: Optional[datetime] = None
 
-    # Final verdict
+    
     overall_score: float = Field(..., ge=0.0, le=100.0)
-    credibility_rating: str    # HIGH / MODERATE / LOW / UNRELIABLE
-    verdict: str               # REAL / LIKELY REAL / LIKELY FAKE / FAKE
+    credibility_rating: str    
+    verdict: str               
     verdict_summary: str
 
-    # Dimension breakdown
+    
     dimensions: List[DimensionScore] = Field(default_factory=list)
 
-    # What the extractor found
+    
     ad_profile: AdProfile = Field(default_factory=AdProfile)
 
-    # What Ollama extracted
+    
     article_context: str = ""
     relevant_facts: List[str] = Field(default_factory=list)
     irrelevant_facts: List[str] = Field(default_factory=list)
@@ -227,15 +227,15 @@ class CredibilityScorecard(BaseModel):
     misleading_patterns: List[str] = Field(default_factory=list)
     content_tone: str = "neutral"
 
-    # Corroboration
+    
     corroboration: CorroborationResult
 
-    # Image analysis (deepfake detection) — None when no images found
+    
     image_analysis: Optional["ImageAnalysisResult"] = None
 
-    # Video analysis (deepfake detection on video frames) — None when no video
+    
     video_analysis: Optional["VideoAnalysisResult"] = None
 
-    # Signals
+    
     red_flags: List[str] = Field(default_factory=list)
     positive_signals: List[str] = Field(default_factory=list)

@@ -59,7 +59,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
   const { pill, bg, border, label } = verdictStyle(sc.verdict);
   const c = scoreColor(sc.overall_score);
 
-  // Holds a data-URL snapshot of the graph canvas while PDF is being rendered
+  
   const [pdfGraphImage, setPdfGraphImage] = useState<string | null>(null);
 
   const handleBackdrop = useCallback((e: React.MouseEvent) => {
@@ -80,16 +80,16 @@ export default function ScorecardModal({ sc, onClose }: Props) {
   const downloadPDF = async () => {
     if (!panelRef.current) return;
 
-    // ── Step 1: Snapshot the graph canvas before touching the DOM ──────────
+    
     const graphCanvas  = graphContainerRef.current?.querySelector('canvas');
     const snapshotUrl  = graphCanvas ? graphCanvas.toDataURL('image/png') : null;
 
-    // ── Step 2: Switch graph → static image ────────────────────────────────
+    
     setPdfGraphImage(snapshotUrl);
 
-    // ── Step 3: Expand the modal body to FULL scroll height ────────────────
-    // The panel body is the scrollable child — we temporarily unlock it
-    // so html2canvas can see every pixel, then restore after.
+    
+    
+    
     const bodyEl = panelRef.current.querySelector<HTMLElement>('[data-pdf-body]');
     let savedMaxH = '';
     let savedOverflow = '';
@@ -100,15 +100,15 @@ export default function ScorecardModal({ sc, onClose }: Props) {
       bodyEl.style.overflowY  = 'visible';
     }
 
-    // The panel itself also needs uncapping
+    
     const savedPanelMaxH  = panelRef.current.style.maxHeight;
     const savedPanelOverflow = panelRef.current.style.overflow;
     
     panelRef.current.style.maxHeight = 'none';
     panelRef.current.style.overflow  = 'visible';
     
-    // Fix: Remove animation class completely so the html2canvas clone iframe 
-    // doesn't restart the fade-in animation and capture a ghost frame.
+    
+    
     const hadModalIn = panelRef.current.classList.contains('modal-in');
     if (hadModalIn) {
       panelRef.current.classList.remove('modal-in');
@@ -117,27 +117,27 @@ export default function ScorecardModal({ sc, onClose }: Props) {
     panelRef.current.style.setProperty('transform', 'none', 'important');
     panelRef.current.style.setProperty('animation', 'none', 'important');
 
-    // Let React re-render and browser reflow
+    
     await new Promise<void>(r => setTimeout(r, 250));
 
-    // ── Step 4: Capture ────────────────────────────────────────────────────
+    
     const { default: html2canvas } = await import('html2canvas');
     const { jsPDF }                = await import('jspdf');
 
     const canvas = await html2canvas(panelRef.current, {
-      scale: 3,                     // triple-res → crisp on retina & print
+      scale: 3,                     
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
       imageTimeout: 0,
-      // Let html2canvas capture the full rendered height
+      
       windowWidth:  panelRef.current.scrollWidth,
       windowHeight: panelRef.current.scrollHeight,
       ignoreElements: el => el.tagName === 'CANVAS',
     });
 
-    // ── Step 5: Restore panel dimensions ──────────────────────────────────
+    
     panelRef.current.style.maxHeight = savedPanelMaxH;
     panelRef.current.style.overflow  = savedPanelOverflow;
     
@@ -154,32 +154,32 @@ export default function ScorecardModal({ sc, onClose }: Props) {
     }
     setPdfGraphImage(null);
 
-    // ── Step 6: Build multi-page PDF ───────────────────────────────────────
+    
     const pdf    = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageW  = pdf.internal.pageSize.getWidth();   // 210 mm
-    const pageH  = pdf.internal.pageSize.getHeight();  // 297 mm
+    const pageW  = pdf.internal.pageSize.getWidth();   
+    const pageH  = pdf.internal.pageSize.getHeight();  
 
-    // How many mm does 1 canvas pixel equal?
+    
     const mmPerPx = pageW / canvas.width;
-    const totalH  = canvas.height * mmPerPx;           // full document height in mm
+    const totalH  = canvas.height * mmPerPx;           
 
-    // Number of A4 pages needed
+    
     const pages = Math.ceil(totalH / pageH);
 
     for (let p = 0; p < pages; p++) {
       if (p > 0) pdf.addPage();
 
-      // Source rectangle on the canvas for this page
-      const srcY = (p * pageH) / mmPerPx;             // px offset on canvas
+      
+      const srcY = (p * pageH) / mmPerPx;             
       const srcH = Math.min(pageH / mmPerPx, canvas.height - srcY);
 
-      // Slice this page's strip out of the canvas
+      
       const pageCanvas = document.createElement('canvas');
       pageCanvas.width  = canvas.width;
       pageCanvas.height = Math.ceil(srcH);
       const pCtx = pageCanvas.getContext('2d')!;
       
-      // Ensure solid white background just in case
+      
       pCtx.fillStyle = '#ffffff';
       pCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
       pCtx.drawImage(canvas, 0, -srcY);
@@ -220,7 +220,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Header */}
+        {}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px',
@@ -232,7 +232,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
               width: '32px', height: '32px', borderRadius: '8px',
               background: '#1B3A6B', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              {/* Lens SVG */}
+              {}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
               </svg>
@@ -269,10 +269,10 @@ export default function ScorecardModal({ sc, onClose }: Props) {
           </div>
         </div>
 
-        {/* Body */}
+        {}
         <div data-pdf-body style={{ overflowY: 'auto', flex: 1, padding: '20px' }}>
 
-          {/* Title + meta */}
+          {}
           <div style={{ marginBottom: '20px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#18181B', lineHeight: 1.4, marginBottom: '6px' }}>
               {sc.title}
@@ -290,7 +290,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           </div>
 
-          {/* Score hero */}
+          {}
           <div style={{
             display: 'flex', gap: '20px', alignItems: 'center',
             background: '#F8F7F4', borderRadius: '12px', padding: '20px', marginBottom: '20px',
@@ -316,7 +316,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           </div>
 
-          {/* Context */}
+          {}
           {sc.article_context && (
             <div style={{
               background: '#F0EEF7', border: '1px solid #DDD8F0', borderRadius: '10px',
@@ -329,7 +329,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           )}
 
-          {/* Dimensions */}
+          {}
           <div style={{ marginBottom: '20px' }}>
             <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
               Dimension Breakdown
@@ -339,7 +339,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             ))}
           </div>
 
-          {/* Signals grid */}
+          {}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
             {sc.red_flags?.length > 0 && (
               <div style={{
@@ -377,7 +377,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             )}
           </div>
 
-          {/* Image Forensics */}
+          {}
           {sc.image_analysis && sc.image_analysis.results.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
@@ -421,13 +421,13 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           )}
 
-          {/* Video Forensics */}
+          {}
           {sc.video_analysis && sc.video_analysis.total_frames_analyzed > 0 && (() => {
             const va = sc.video_analysis;
             const verdictColor = va.verdict === 'FAKE' ? '#991B1B' : va.verdict === 'LIKELY FAKE' ? '#92400E' : '#166534';
             const verdictBg    = va.verdict === 'FAKE' ? '#FEF2F2'  : va.verdict === 'LIKELY FAKE' ? '#FFFBEB'  : '#F0FDF4';
 
-            // Build per-second colour map for the timeline
+            
             const secondMap: Record<number, { maxProb: number; isBurst: boolean }> = {};
             for (const fr of va.frame_results) {
               const cur = secondMap[fr.second];
@@ -444,7 +444,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
                   Video Forensics
                 </p>
 
-                {/* Summary row */}
+                {}
                 <div style={{ background: '#F8F7F4', borderRadius: '10px', padding: '12px 14px', display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '13px', color: '#52525B', marginBottom: '14px' }}>
                   <span><strong style={{ color: '#18181B' }}>{va.duration_seconds.toFixed(1)}s</strong> duration</span>
                   <span><strong style={{ color: '#18181B' }}>{va.total_frames_analyzed}</strong> frames analyzed</span>
@@ -461,7 +461,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
                   </span>
                 </div>
 
-                {/* Per-second timeline */}
+                {}
                 {seconds.length > 0 && (
                   <div>
                     <p style={{ fontSize: '11px', color: '#A1A1AA', marginBottom: '8px' }}>
@@ -496,7 +496,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
                   </div>
                 )}
 
-                {/* Max fake probability meter */}
+                {}
                 <div style={{ marginTop: '14px', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#71717A', marginBottom: '5px' }}>
                     <span>Max fake probability</span>
@@ -513,7 +513,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Video Frame Heatmaps */}
+                {}
                 {va.frame_results.some(r => r.gradcam_base64) && (
                   <div style={{ marginTop: '20px' }}>
                     <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -556,7 +556,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           )}
 
-          {/* Irrelevant facts */}
+          {}
           {sc.irrelevant_facts?.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -572,7 +572,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           )}
 
-          {/* Ad profile */}
+          {}
           {sc.ad_profile?.total_ad_slots > 0 && (
             <div style={{ marginBottom: '4px' }}>
               <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -590,11 +590,11 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           )}
 
-          {/* ── Source Verification Network graph ─────────────────────── */}
+          {}
           {!isVideoOnly && (
             <div ref={graphContainerRef}>
               {pdfGraphImage ? (
-                // Static snapshot shown during PDF generation
+                
                 <div style={{ marginTop: '20px' }}>
                   <p style={{
                     fontSize: '11px', fontWeight: 600, color: '#A1A1AA',
@@ -608,7 +608,7 @@ export default function ScorecardModal({ sc, onClose }: Props) {
                     style={{ width: '100%', borderRadius: '12px', display: 'block', marginBottom: '20px' }}
                   />
                   
-                  {/* List of sources for the PDF since they can't click the graph */}
+                  {}
                   {sc.corroboration?.top_sources && sc.corroboration.top_sources.length > 0 && (
                     <div>
                       <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -640,14 +640,14 @@ export default function ScorecardModal({ sc, onClose }: Props) {
                   )}
                 </div>
               ) : (
-                // Interactive graph in browser
+                
                 <PropagationGraph sc={sc} />
               )}
             </div>
           )}
         </div>
 
-        {/* Footer */}
+        {}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '14px 20px', borderTop: '1px solid #F0EDE6', flexShrink: 0,

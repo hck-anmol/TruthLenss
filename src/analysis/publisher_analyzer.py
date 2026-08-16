@@ -22,11 +22,11 @@ class PublisherAnalyzer:
     def analyze(self, domain: Optional[str], uses_https: bool = False,
                 outbound_links: Optional[List[str]] = None, publisher_name: Optional[str] = None) -> PublisherAnalysis:
         signals = []
-        score = 0.5  # neutral baseline
+        score = 0.5  
 
         raw_domain = (domain or "").lower().replace("www.", "")
 
-        # HTTPS check
+        
         if uses_https:
             score += 0.05
             signals.append("✓ Uses HTTPS (secure)")
@@ -34,7 +34,7 @@ class PublisherAnalyzer:
             score -= 0.1
             signals.append("✗ Does not use HTTPS")
 
-        # Known high-credibility domain
+        
         if any(trusted in raw_domain for trusted in self.KNOWN_HIGH_CREDIBILITY):
             score += 0.4
             signals.append(f"✓ Known high-credibility domain: {raw_domain}")
@@ -45,7 +45,7 @@ class PublisherAnalyzer:
         else:
             known_unreliable = False
 
-        # Domain extension trust
+        
         extension_trust = 0.5
         for ext in self.HIGH_TRUST_EXTENSIONS:
             if raw_domain.endswith(ext):
@@ -66,7 +66,7 @@ class PublisherAnalyzer:
                 signals.append(f"✗ Low-trust domain extension: {ext}")
                 break
 
-        # Outbound link quality
+        
         outbound_link_quality = self._evaluate_outbound_links(outbound_links or [])
         if outbound_link_quality > 0.7:
             score += 0.05

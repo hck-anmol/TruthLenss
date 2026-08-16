@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
 
-// ── Python runner config ─────────────────────────────────────────────────────
+
 const PYTHON_ROOT = path.resolve(process.cwd(), '..');
 const PYTHON_EXE  = path.join(PYTHON_ROOT, '.venv', 'Scripts', 'python.exe');
 const MAIN_SCRIPT = path.join(PYTHON_ROOT, 'main.py');
@@ -72,7 +72,7 @@ interface PythonScorecard {
   positive_signals:   string[];
 }
 
-// ── Spawn the Python pipeline and collect stdout as raw UTF-8 ────────────────
+
 
 function runPipeline(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -96,8 +96,8 @@ function runPipeline(args: string[]): Promise<string> {
       if (code === 0) {
         resolve(stdout);
       } else {
-        // Surface the Python error message cleanly
-        const pythonError = stderr
+
+                const pythonError = stderr
           .split('\n')
           .filter(l => l.includes('Pipeline error') || l.includes('Error') || l.includes('error'))
           .join(' ')
@@ -106,15 +106,15 @@ function runPipeline(args: string[]): Promise<string> {
       }
     });
 
-    // 15-minute hard timeout (Ollama can be slow on first run)
-    setTimeout(() => {
+
+        setTimeout(() => {
       proc.kill();
       reject(new Error('Analysis timed out after 15 minutes. The AI model may be overloaded.'));
     }, 15 * 60 * 1000);
   });
 }
 
-// ── Parse raw stdout into the Python scorecard object ───────────────────────
+
 
 function parseScorecard(stdout: string): PythonScorecard {
   const firstBrace = stdout.indexOf('{');
@@ -129,7 +129,7 @@ function parseScorecard(stdout: string): PythonScorecard {
   return JSON.parse(stdout.slice(firstBrace, lastBrace + 1)) as PythonScorecard;
 }
 
-// ── Shape the raw scorecard into the public API response ────────────────────
+
 
 function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
   return {
@@ -137,8 +137,8 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
     analyzed_at: analyzedAt,
     api_version: 'v1',
 
-    // ── Article metadata ───────────────────────────────────────────────────
-    article: {
+
+        article: {
       url:          sc.url          ?? null,
       title:        sc.title,
       domain:       sc.domain       ?? null,
@@ -147,16 +147,16 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
       publish_date: sc.publish_date ?? null,
     },
 
-    // ── Top-level verdict ──────────────────────────────────────────────────
-    verdict: {
+
+        verdict: {
       label:              sc.verdict,
-      overall_score:      Math.round(sc.overall_score * 10) / 10,   // 1 decimal
+      overall_score:      Math.round(sc.overall_score * 10) / 10,   
       credibility_rating: sc.credibility_rating,
       summary:            sc.verdict_summary,
     },
 
-    // ── Per-dimension breakdown ────────────────────────────────────────────
-    dimensions: (sc.dimensions ?? []).map(d => ({
+
+        dimensions: (sc.dimensions ?? []).map(d => ({
       name:         d.name,
       score:        Math.round(d.score * 10) / 10,
       weight:       d.weight,
@@ -165,7 +165,6 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
       summary:      d.summary ?? '',
     })),
 
-    // ── LLM (Ollama) analysis ──────────────────────────────────────────────
     llm_analysis: {
       article_context:     sc.article_context    ?? '',
       main_claims:         sc.main_claims        ?? [],
@@ -178,8 +177,8 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
       content_tone:        sc.content_tone       ?? 'neutral',
     },
 
-    // ── Tavily web corroboration ───────────────────────────────────────────
-    corroboration: {
+
+        corroboration: {
       verdict_label:         sc.corroboration?.verdict_label        ?? 'Not checked',
       corroboration_score:   sc.corroboration?.corroboration_score  ?? 0,
       total_sources_found:   sc.corroboration?.total_sources_found  ?? 0,
@@ -199,7 +198,6 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
       })),
     },
 
-    // ── Ad / monetisation profile ──────────────────────────────────────────
     ad_profile: {
       total_ad_slots:           sc.ad_profile?.total_ad_slots            ?? 0,
       has_clickbait_ads:        sc.ad_profile?.has_clickbait_ads         ?? false,
@@ -207,7 +205,6 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
       ad_density_per_100_words: sc.ad_profile?.ad_density               ?? 0,
     },
 
-    // ── Credibility signals ────────────────────────────────────────────────
     signals: {
       red_flags:        sc.red_flags       ?? [],
       positive_signals: sc.positive_signals ?? [],
@@ -215,7 +212,6 @@ function buildApiResponse(sc: PythonScorecard, analyzedAt: string) {
   };
 }
 
-// ── Route handler ────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const analyzedAt = new Date().toISOString();
@@ -251,8 +247,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Build CLI args for main.py
-  const args: string[] = [MAIN_SCRIPT, '--json'];
+
+    const args: string[] = [MAIN_SCRIPT, '--json'];
   if (url)   args.push('--url',   url);
   if (text)  args.push('--text',  text);
   if (title) args.push('--title', title);
@@ -267,8 +263,8 @@ export async function POST(req: NextRequest) {
   } catch (e: unknown) {
     const raw = e instanceof Error ? e.message : 'Internal server error';
 
-    // Make pipeline errors human-readable
-    const friendly = raw
+
+        const friendly = raw
       .replace('Pipeline error: ', '')
       .replace(/\n\s+/g, ' ')
       .trim();
@@ -284,7 +280,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── GET — API documentation ───────────────────────────────────────────────────
+
 
 export async function GET() {
   return NextResponse.json({

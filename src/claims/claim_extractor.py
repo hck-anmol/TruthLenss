@@ -14,7 +14,7 @@ class ClaimExtractor:
 
         for stmt in sentences:
             stmt_clean = stmt.strip()
-            # Match sentences with percentages, large numbers, quotes, or strong claim keywords
+            
             if (re.search(r'\b\d+(?:\.\d+)?%?\b', stmt_clean) or '"' in stmt_clean or 
                 any(kw in stmt_clean.lower() for kw in ["found that", "announced", "according to", "study shows", "discovered"])):
                 if len(stmt_clean) > 20:

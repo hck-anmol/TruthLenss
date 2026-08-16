@@ -15,7 +15,7 @@ class AdAnalyzer:
         "exclusive offer", "no risk", "click here"
     ]
 
-    TRUSTED_ARTICLE_TOPICS = []  # populated dynamically
+    TRUSTED_ARTICLE_TOPICS = []  
 
     def analyze_from_html(self, html_content: str, article_text: str, article_keywords: List[str] = None) -> AdAnalysis:
         """Full analysis from raw HTML — used when URL is available."""
@@ -31,7 +31,7 @@ class AdAnalyzer:
         ad_claims: List[str] = []
 
         for el in ad_elements:
-            # Type classification
+            
             tag = el.name.lower()
             if tag == 'iframe':
                 ad_types.append("video/embed")
@@ -42,30 +42,30 @@ class AdAnalyzer:
             else:
                 ad_types.append("inline/text ad")
 
-            # Extract text content from ad element
+            
             el_text = el.get_text(separator=" ").lower().strip()
             if el_text:
                 ad_texts.append(el_text)
 
-            # Check for misleading claims in ads
+            
             for marker in self.AD_CLAIM_MARKERS:
                 if marker in el_text:
                     ad_claims.append(f"Ad claim: '{marker}' found")
                     break
 
-        # Ad-to-topic relevance: keyword overlap between article keywords and ad text
+        
         article_kw = set(article_keywords or article_text.lower().split()[:50])
         all_ad_text = " ".join(ad_texts).lower()
         ad_words = set(all_ad_text.split())
         overlap = article_kw.intersection(ad_words)
         topic_relevance = round(min(len(overlap) / (len(article_kw) + 1), 1.0), 3) if article_kw else 0.5
 
-        # Ad ratio (estimated ad char coverage vs body text)
+        
         text_len = max(len(article_text), 1)
         ad_text_len = sum(len(t) for t in ad_texts)
         ad_ratio = round(min(ad_text_len / text_len, 1.0), 3)
 
-        # Penalty score
+        
         penalty = self._compute_penalty(num_ads, ad_ratio, len(ad_claims))
 
         return AdAnalysis(
@@ -82,7 +82,7 @@ class AdAnalyzer:
         """Lightweight analysis from ExtractedArticle metadata — no raw HTML required."""
         if article.ad_details:
             return self.analyze_from_html("", article.text)
-        # Raw text mode — neutral baseline
+        
         return self._neutral_baseline()
 
     def _find_ad_elements(self, soup: BeautifulSoup) -> list:

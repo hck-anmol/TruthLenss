@@ -29,7 +29,7 @@ class EmotionDetector:
         polarity    = round(blob.sentiment.polarity, 3)
         subjectivity = round(blob.sentiment.subjectivity, 3)
 
-        # Emotion breakdown
+        
         words = text.lower().split()
         word_count = max(len(words), 1)
         breakdown: Dict[str, float] = {}
@@ -39,11 +39,11 @@ class EmotionDetector:
             breakdown[category] = round(min(hits / (word_count / 100.0 + 1.0) * 0.5, 1.0), 3)
             total_emotional += hits
 
-        # Sensationalism = weighted average of negative categories + subjectivity
+        
         neg_score = (breakdown.get("fear", 0) + breakdown.get("anger", 0) + breakdown.get("disgust", 0)) / 3.0
         sensationalism_score = round(min((neg_score * 0.6) + (subjectivity * 0.4), 1.0), 3)
 
-        # Dominant tone
+        
         if max(breakdown.values(), default=0) == 0 and abs(polarity) < 0.2:
             dominant_tone = "neutral / objective"
         elif breakdown.get("fear", 0) == max(breakdown.values()):

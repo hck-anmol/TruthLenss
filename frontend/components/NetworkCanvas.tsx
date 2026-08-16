@@ -42,8 +42,8 @@ export default function NetworkCanvas() {
         if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
       }
 
-      // Edges
-      for (let i = 0; i < N; i++) {
+
+            for (let i = 0; i < N; i++) {
         for (let j = i + 1; j < N; j++) {
           const dx = nodes[i].x - nodes[j].x;
           const dy = nodes[i].y - nodes[j].y;
@@ -59,8 +59,8 @@ export default function NetworkCanvas() {
         }
       }
 
-      // Nodes
-      for (const n of nodes) {
+
+            for (const n of nodes) {
         ctx.beginPath();
         ctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(27,58,107,0.18)';

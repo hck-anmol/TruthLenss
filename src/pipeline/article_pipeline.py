@@ -2,28 +2,38 @@
 ArticlePipeline: Orchestrates the full multi-modal detection pipeline.
 
   Step 1  — ArticleExtractor      : Extract clean text + image URLs from URL
-  Step 1b — DeepfakeImageAnalyzer : Analyze article images for deepfakes
+  Step 1b — DeepfakeImageAnalyzer : Analyze article images for deepfakes (no ads)
   Step 2  — OllamaExtractor       : Analyze facts, claims, clickbait (qwen3:8b)
   Step 3  — TavilyCorroborator    : Search 50 articles across trusted sources
   Step 3b — Ollama reasoning      : Reason over corroboration evidence
   Step 4  — ScorecardGenerator    : Build final credibility scorecard
+
+  NOTE: Video analysis is NOT part of article analysis.
+        Videos found embedded in articles are intentionally ignored.
+        Use standalone video_path mode for deepfake video analysis.
 """
 
 import logging
 from typing import Optional
 
-from src.schemas.article_schema import ArticleInput, CredibilityScorecard, ImageAnalysisResult
+from src.schemas.article_schema import ArticleInput, CredibilityScorecard, ImageAnalysisResult, VideoAnalysisResult
 from src.extraction.article_extractor import ArticleExtractor
 from src.llm.ollama_extractor import OllamaExtractor
 from src.verification.tavily_corroborator import TavilyCorroborator
 from src.scoring.scorecard import ScorecardGenerator
 
-# Lazy import — deepfake model is heavy (~80MB) and may not be needed
+# Lazy imports — model is heavy (~80MB) and may not be needed
 try:
     from src.analysis.image_forensics import DeepfakeImageAnalyzer
     DEEPFAKE_AVAILABLE = True
 except ImportError:
     DEEPFAKE_AVAILABLE = False
+
+try:
+    from src.analysis.video_forensics import VideoForensicsAnalyzer
+    VIDEO_FORENSICS_AVAILABLE = True
+except ImportError:
+    VIDEO_FORENSICS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -41,29 +51,59 @@ class ArticlePipeline:
         self.corroborator   = corroborator or TavilyCorroborator()
         self.scorer         = scorecard_generator or ScorecardGenerator()
 
-    def run(self, article_input: ArticleInput) -> CredibilityScorecard:
+    def run(
+        self,
+        article_input: ArticleInput,
+        video_path: str = None,   # path to an uploaded video file (standalone only)
+        image_path: str = None,   # path to an uploaded image file (standalone only)
+    ) -> CredibilityScorecard:
+
+        # Determine analysis mode
+        video_only_mode = bool(video_path and not article_input.url and not article_input.raw_text)
+        image_only_mode = bool(image_path and not article_input.url and not article_input.raw_text)
 
         # ── Step 1: Extract article text + image URLs ──────────────────────
         logger.info("Step 1/5 — Extracting article text and images...")
-        article = self.extractor.extract(article_input)
-        logger.info(f"  Extracted: '{article.title[:60]}' ({article.word_count} words)")
 
-        if not article.text or article.word_count < 30:
+        if video_only_mode or image_only_mode:
+            # Standalone media mode — bypass article extractor entirely
+            from src.schemas.article_schema import ArticleExtraction
+            title = "Uploaded Video File" if video_only_mode else "Uploaded Image File"
+            article = ArticleExtraction(
+                title=title,
+                text="",
+                word_count=0,
+                image_urls=[image_path] if image_only_mode else [],
+                video_urls=[],
+            )
+            logger.info("  Bypassing article extraction (standalone media mode)")
+        else:
+            article = self.extractor.extract(article_input)
+            logger.info(f"  Extracted: '{article.title[:60]}' ({article.word_count} words)")
+
+        # Text length validation (only for article mode)
+        if not video_only_mode and not image_only_mode and (not article.text or article.word_count < 30):
             raise ValueError(
                 f"Could not extract article text from the provided source.\n"
-                f"  Title: '{article.title}'\n"
-                f"  Words: {article.word_count}\n"
+                f"Title: '{article.title}'\n"
+                f"Words: {article.word_count}\n\n"
                 f"Please check that the URL is valid and publicly accessible."
             )
 
-        # ── Step 1b: Image deepfake analysis (only if images found) ────────
+        # ── Step 1b: Image deepfake analysis ──────────────────────────────
+        # For article mode: analyze content images extracted from the article (ads already filtered)
+        # For standalone image mode: analyze the uploaded image file
         image_analysis: Optional[ImageAnalysisResult] = None
 
-        if article.image_urls and DEEPFAKE_AVAILABLE:
-            logger.info(f"Step 1b/5 — Analyzing {len(article.image_urls)} images for deepfakes...")
+        image_targets = article.image_urls  # already ad-filtered by extractor
+        if image_only_mode and image_path:
+            image_targets = [image_path]
+
+        if image_targets and DEEPFAKE_AVAILABLE:
+            logger.info(f"Step 1b — Analyzing {len(image_targets)} image(s) for deepfakes...")
             try:
                 analyzer = DeepfakeImageAnalyzer()
-                image_analysis = analyzer.analyze(article.image_urls)
+                image_analysis = analyzer.analyze(image_targets)
                 logger.info(
                     f"  Images analyzed: {image_analysis.total_images_analyzed} | "
                     f"Fake detected: {image_analysis.fake_images_detected} | "
@@ -72,45 +112,81 @@ class ArticlePipeline:
             except Exception as e:
                 logger.warning(f"  Image analysis failed (non-fatal): {e}")
                 image_analysis = None
-        elif article.image_urls and not DEEPFAKE_AVAILABLE:
+        elif image_targets and not DEEPFAKE_AVAILABLE:
             logger.warning("  Deepfake analyzer not available — skipping image analysis")
         else:
             logger.info("  No content images found — skipping image analysis")
 
-        # ── Step 2: Ollama analysis ────────────────────────────────────────
-        logger.info("Step 2/5 — Analyzing with Ollama (qwen3:8b)...")
-        ollama_analysis = self.ollama.analyze_article(article)
-        logger.info(
-            f"  Relevant facts: {len(ollama_analysis.relevant_facts)} | "
-            f"Irrelevant facts: {len(ollama_analysis.irrelevant_facts)} | "
-            f"Claims: {len(ollama_analysis.main_claims)} | "
-            f"Queries: {len(ollama_analysis.search_queries)}"
-        )
+        # ── Step 1c: Video deepfake analysis (standalone mode only) ────────
+        # NOTE: Videos embedded in articles are intentionally NOT analyzed.
+        #       Video analysis only runs when an explicit video_path is provided.
+        video_analysis: Optional[VideoAnalysisResult] = None
 
-        # ── Step 3: Tavily corroboration ───────────────────────────────────
-        logger.info("Step 3/5 — Searching internet for corroborating sources (Tavily)...")
-        corroboration = self.corroborator.corroborate(
-            search_queries=ollama_analysis.search_queries,
-            article_title=article.title,
-        )
-        logger.info(
-            f"  Found: {corroboration.total_sources_found} sources | "
-            f"Trusted: {corroboration.trusted_sources_count} "
-            f"(Tier1={corroboration.tier1_count}, Tier2={corroboration.tier2_count})"
-        )
+        if video_only_mode and video_path:
+            if VIDEO_FORENSICS_AVAILABLE:
+                logger.info(f"Step 1c — Analyzing uploaded video for deepfakes...")
+                try:
+                    analyzer = VideoForensicsAnalyzer()
+                    video_analysis = analyzer.analyze_file(video_path, source="uploaded")
+                    if video_analysis:
+                        logger.info(
+                            f"  Video: {video_analysis.duration_seconds:.1f}s | "
+                            f"{video_analysis.total_frames_analyzed} frames | "
+                            f"max_fake={video_analysis.max_fake_probability:.3f} | "
+                            f"score={video_analysis.video_authenticity_score:.1f} | "
+                            f"verdict={video_analysis.verdict}"
+                        )
+                except Exception as e:
+                    logger.warning(f"  Video analysis failed (non-fatal): {e}")
+                    video_analysis = None
+            else:
+                logger.warning("  Video forensics not available — skipping video analysis")
+        else:
+            logger.info("  Video analysis skipped (article mode — only standalone video is analyzed)")
 
-        # ── Step 3b: Ollama reasoning pass (with Tavily evidence) ──────────
-        logger.info("Step 3b/5 — Ollama reasoning over corroboration evidence...")
-        search_results_text = self.corroborator.format_results_for_llm(corroboration)
-        llm_reasoning = self.ollama.reason_about_credibility(
-            article, ollama_analysis, search_results_text
-        )
+        # ── Video-only or Image-only bypass for text steps ───────────────────────────────
+        if video_only_mode or image_only_mode:
+            logger.info("  Skipping text-based analysis (Video/Image-only mode)")
+            from src.schemas.article_schema import OllamaAnalysis, CorroborationResult
+            ollama_analysis = OllamaAnalysis()
+            corroboration = CorroborationResult()
+            llm_reasoning = {}
+        else:
+            # ── Step 2: Ollama analysis ────────────────────────────────────────
+            logger.info("Step 2/5 — Analyzing with Ollama (qwen3:8b)...")
+            ollama_analysis = self.ollama.analyze_article(article)
+            logger.info(
+                f"  Relevant facts: {len(ollama_analysis.relevant_facts)} | "
+                f"Irrelevant facts: {len(ollama_analysis.irrelevant_facts)} | "
+                f"Claims: {len(ollama_analysis.main_claims)} | "
+                f"Queries: {len(ollama_analysis.search_queries)}"
+            )
+
+            # ── Step 3: Tavily corroboration ───────────────────────────────────
+            logger.info("Step 3/5 — Searching internet for corroborating sources (Tavily)...")
+            corroboration = self.corroborator.corroborate(
+                search_queries=ollama_analysis.search_queries,
+                article_title=article.title,
+            )
+            logger.info(
+                f"  Found: {corroboration.total_sources_found} sources | "
+                f"Trusted: {corroboration.trusted_sources_count} "
+                f"(Tier1={corroboration.tier1_count}, Tier2={corroboration.tier2_count})"
+            )
+
+            # ── Step 3b: Ollama reasoning pass (with Tavily evidence) ──────────
+            logger.info("Step 3b/5 — Ollama reasoning over corroboration evidence...")
+            search_results_text = self.corroborator.format_results_for_llm(corroboration)
+            llm_reasoning = self.ollama.reason_about_credibility(
+                article, ollama_analysis, search_results_text
+            )
 
         # ── Step 4: Generate scorecard (with image analysis if available) ──
         logger.info("Step 4/5 — Generating credibility scorecard...")
         scorecard = self.scorer.generate(
             article, ollama_analysis, corroboration, llm_reasoning,
-            image_analysis=image_analysis
+            image_analysis=image_analysis,
+            video_analysis=video_analysis,
         )
         logger.info(
             f"  Verdict: {scorecard.verdict} | "

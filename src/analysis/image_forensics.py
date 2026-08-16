@@ -129,6 +129,13 @@ class DeepfakeImageAnalyzer:
 
     def download_image(self, url: str) -> np.ndarray:
         try:
+            if os.path.exists(url):
+                # It's a local file path
+                img = cv2.imread(url)
+                if img is not None:
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                return img
+                
             resp = requests.get(url, headers=HEADERS, timeout=10)
             resp.raise_for_status()
             image_array = np.asarray(bytearray(resp.content), dtype=np.uint8)
@@ -137,7 +144,7 @@ class DeepfakeImageAnalyzer:
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             return img
         except Exception as e:
-            logger.debug(f"Failed to download image {url}: {e}")
+            logger.debug(f"Failed to load image {url}: {e}")
             return None
 
     def analyze(self, image_urls: List[str]) -> ImageAnalysisResult:

@@ -45,6 +45,8 @@ class ArticleExtraction(BaseModel):
     ad_profile: AdProfile = Field(default_factory=AdProfile)
     # Image URLs extracted from the article HTML
     image_urls: List[str] = Field(default_factory=list)
+    # Video URLs found in article (src of <video> tags, YouTube iframes, etc.)
+    video_urls: List[str] = Field(default_factory=list)
     # kept for legacy compatibility
     meta_keywords: List[str] = Field(default_factory=list)
     meta_description: Optional[str] = None
@@ -147,7 +149,32 @@ class ImageAnalysisResult(BaseModel):
     results: List[ImageResult] = Field(default_factory=list)
 
 
-# ── 5c. Title / Clickbait Analysis ─────────────────────────────────────────
+
+# ── 5c. Video Analysis (deepfake detection on video frames) ────────────────
+
+class VideoFrameResult(BaseModel):
+    """Prediction for a single sampled frame."""
+    second: int                    # which second of the video this frame came from
+    frame_index: int               # index within that second's samples
+    fake_probability: float        # 0.0 (real) → 1.0 (fake)
+    is_anomaly_burst: bool = False # True = part of high-density anomaly burst
+    gradcam_base64: str = ""       # Heatmap for top 10 worst frames
+
+
+class VideoAnalysisResult(BaseModel):
+    """Aggregated deepfake analysis for a single video."""
+    source: str                              # original URL or "uploaded"
+    duration_seconds: float = 0.0
+    total_frames_analyzed: int = 0
+    anomaly_seconds: List[int] = Field(default_factory=list)  # seconds that triggered burst
+    fake_frame_count: int = 0
+    max_fake_probability: float = 0.0
+    video_authenticity_score: float = 100.0  # 0–100
+    verdict: str = "REAL"                    # "REAL" / "LIKELY FAKE" / "FAKE"
+    frame_results: List[VideoFrameResult] = Field(default_factory=list)
+
+
+# ── 5d. Title / Clickbait Analysis ─────────────────────────────────────────
 
 class TitleAnalysis(BaseModel):
     """Structured output from clickbait/title analysis."""
@@ -205,6 +232,9 @@ class CredibilityScorecard(BaseModel):
 
     # Image analysis (deepfake detection) — None when no images found
     image_analysis: Optional["ImageAnalysisResult"] = None
+
+    # Video analysis (deepfake detection on video frames) — None when no video
+    video_analysis: Optional["VideoAnalysisResult"] = None
 
     # Signals
     red_flags: List[str] = Field(default_factory=list)

@@ -202,15 +202,30 @@ def main():
     parser.add_argument("--text",  type=str, help="Raw text of the article")
     parser.add_argument("--title", type=str, help="Article title (for raw text mode)")
     parser.add_argument("--publisher", type=str, help="Publisher/domain name (optional)")
+    parser.add_argument("--video", type=str, help="Path to a local video file for deepfake analysis")
+    parser.add_argument("--image", type=str, help="Path to a local image file for deepfake analysis")
     parser.add_argument("--json",  action="store_true", help="Output full JSON report")
     parser.add_argument("--verbose", action="store_true", help="Show detailed pipeline logs")
 
     args = parser.parse_args()
 
-    if not args.url and not args.text:
-        print("Error: provide --url or --text", file=sys.stderr)
+    if not args.url and not args.text and not args.video and not args.image:
+        print("Error: provide --url, --text, --video, or --image", file=sys.stderr)
         parser.print_help()
         sys.exit(1)
+
+    if args.video and not args.url and not args.text:
+        # Video-only mode — validate the file exists
+        import os
+        if not os.path.isfile(args.video):
+            print(f"Error: video file not found: {args.video}", file=sys.stderr)
+            sys.exit(1)
+            
+    if args.image and not args.url and not args.text:
+        import os
+        if not os.path.isfile(args.image):
+            print(f"Error: image file not found: {args.image}", file=sys.stderr)
+            sys.exit(1)
 
     if not args.verbose:
         logging.getLogger().setLevel(logging.WARNING)
@@ -232,7 +247,11 @@ def main():
     pipeline = ArticlePipeline()
 
     try:
-        scorecard = pipeline.run(article_input)
+        scorecard = pipeline.run(
+            article_input, 
+            video_path=args.video or None,
+            image_path=args.image or None
+        )
     except Exception as e:
         print(f"\nPipeline error: {e}", file=sys.stderr)
         sys.exit(1)

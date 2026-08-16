@@ -51,6 +51,26 @@ export interface ImageAnalysisResult {
   results: ImageResult[];
 }
 
+export interface VideoFrameResult {
+  second: number;
+  frame_index: number;
+  fake_probability: number;
+  is_anomaly_burst: boolean;
+  gradcam_base64?: string;
+}
+
+export interface VideoAnalysisResult {
+  source: string;
+  duration_seconds: number;
+  total_frames_analyzed: number;
+  anomaly_seconds: number[];
+  fake_frame_count: number;
+  max_fake_probability: number;
+  video_authenticity_score: number;  // 0-100
+  verdict: string;                   // 'REAL' | 'LIKELY FAKE' | 'FAKE'
+  frame_results: VideoFrameResult[];
+}
+
 
 export interface CredibilityScorecard {
   url: string | null;
@@ -80,6 +100,8 @@ export interface CredibilityScorecard {
   corroboration?: CorroborationResult;
   /** Image deepfake analysis — null when no images found */
   image_analysis?: ImageAnalysisResult | null;
+  /** Video deepfake analysis — null when no video found */
+  video_analysis?: VideoAnalysisResult | null;
 }
 
-export type AnalysisMode = 'url' | 'text' | 'image';
+export type AnalysisMode = 'url' | 'text' | 'image' | 'video';

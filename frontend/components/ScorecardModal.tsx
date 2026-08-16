@@ -51,6 +51,8 @@ function DimBar({ name, score, weight, summary }: { name: string; score: number;
 }
 
 export default function ScorecardModal({ sc, onClose }: Props) {
+  const hasVideo = !!sc.video_analysis;
+  const isVideoOnly = !sc.url && sc.title === 'Uploaded Video File';
   const overlayRef       = useRef<HTMLDivElement>(null);
   const panelRef         = useRef<HTMLDivElement>(null);
   const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -419,7 +421,125 @@ export default function ScorecardModal({ sc, onClose }: Props) {
             </div>
           )}
 
-          {/* Relevant facts */}
+          {/* Video Forensics */}
+          {sc.video_analysis && sc.video_analysis.total_frames_analyzed > 0 && (() => {
+            const va = sc.video_analysis;
+            const verdictColor = va.verdict === 'FAKE' ? '#991B1B' : va.verdict === 'LIKELY FAKE' ? '#92400E' : '#166534';
+            const verdictBg    = va.verdict === 'FAKE' ? '#FEF2F2'  : va.verdict === 'LIKELY FAKE' ? '#FFFBEB'  : '#F0FDF4';
+
+            // Build per-second colour map for the timeline
+            const secondMap: Record<number, { maxProb: number; isBurst: boolean }> = {};
+            for (const fr of va.frame_results) {
+              const cur = secondMap[fr.second];
+              secondMap[fr.second] = {
+                maxProb: cur ? Math.max(cur.maxProb, fr.fake_probability) : fr.fake_probability,
+                isBurst: fr.is_anomaly_burst,
+              };
+            }
+            const seconds = Object.keys(secondMap).map(Number).sort((a, b) => a - b);
+
+            return (
+              <div style={{ marginBottom: '20px' }}>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '14px' }}>
+                  Video Forensics
+                </p>
+
+                {/* Summary row */}
+                <div style={{ background: '#F8F7F4', borderRadius: '10px', padding: '12px 14px', display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '13px', color: '#52525B', marginBottom: '14px' }}>
+                  <span><strong style={{ color: '#18181B' }}>{va.duration_seconds.toFixed(1)}s</strong> duration</span>
+                  <span><strong style={{ color: '#18181B' }}>{va.total_frames_analyzed}</strong> frames analyzed</span>
+                  <span><strong style={{ color: '#18181B' }}>{va.fake_frame_count}</strong> fake frames</span>
+                  <span><strong style={{ color: '#18181B' }}>{va.anomaly_seconds.length}</strong> anomaly burst(s)</span>
+                  <span>
+                    Authenticity:&nbsp;
+                    <strong style={{ color: scoreColor(va.video_authenticity_score) }}>
+                      {va.video_authenticity_score.toFixed(0)}
+                    </strong> / 100
+                  </span>
+                  <span style={{ padding: '2px 8px', borderRadius: '12px', background: verdictBg, color: verdictColor, fontWeight: 600, fontSize: '12px' }}>
+                    {va.verdict}
+                  </span>
+                </div>
+
+                {/* Per-second timeline */}
+                {seconds.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: '11px', color: '#A1A1AA', marginBottom: '8px' }}>
+                      Frame timeline — each bar = 1 second &nbsp;
+                      <span style={{ color: '#166534' }}>■ Real</span> &nbsp;
+                      <span style={{ color: '#D97706' }}>■ Burst</span> &nbsp;
+                      <span style={{ color: '#991B1B' }}>■ Fake</span>
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                      {seconds.map((s) => {
+                        const { maxProb, isBurst } = secondMap[s];
+                        const isFake  = maxProb > 0.70;
+                        const barColor = isFake ? '#EF4444' : isBurst ? '#F59E0B' : '#22C55E';
+                        const height   = 8 + Math.round(maxProb * 24);
+                        return (
+                          <div
+                            key={s}
+                            title={`s=${s} | max fake: ${(maxProb * 100).toFixed(1)}%${isBurst ? ' | burst' : ''}`}
+                            style={{
+                              width: '6px',
+                              height: `${height}px`,
+                              borderRadius: '2px',
+                              background: barColor,
+                              opacity: 0.85,
+                              cursor: 'default',
+                              transition: 'opacity 0.15s',
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Max fake probability meter */}
+                <div style={{ marginTop: '14px', marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#71717A', marginBottom: '5px' }}>
+                    <span>Max fake probability</span>
+                    <strong style={{ color: verdictColor }}>{(va.max_fake_probability * 100).toFixed(1)}%</strong>
+                  </div>
+                  <div style={{ height: '6px', background: '#E8E5DE', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${va.max_fake_probability * 100}%`,
+                      background: va.max_fake_probability > 0.70 ? '#EF4444' : va.max_fake_probability > 0.40 ? '#F59E0B' : '#22C55E',
+                      borderRadius: '3px',
+                      transition: 'width 0.5s ease',
+                    }} />
+                  </div>
+                </div>
+
+                {/* Video Frame Heatmaps */}
+                {va.frame_results.some(r => r.gradcam_base64) && (
+                  <div style={{ marginTop: '20px' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
+                      Deepfake Frame Heatmaps
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                      {va.frame_results.filter(r => r.gradcam_base64).map((r, i) => (
+                        <div key={i} style={{ background: '#FFFFFF', border: '1px solid #E8E5DE', borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                          <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', background: '#F8F7F4' }}>
+                            <img src={r.gradcam_base64!} alt={`Frame at ${r.second}s`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                          <div style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 500, color: '#18181B' }}>0:{r.second.toString().padStart(2, '0')} (f{r.frame_index})</span>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#991B1B' }}>{(r.fake_probability * 100).toFixed(1)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {sc.relevant_facts?.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
@@ -471,58 +591,60 @@ export default function ScorecardModal({ sc, onClose }: Props) {
           )}
 
           {/* ── Source Verification Network graph ─────────────────────── */}
-          <div ref={graphContainerRef}>
-            {pdfGraphImage ? (
-              // Static snapshot shown during PDF generation
-              <div style={{ marginTop: '20px' }}>
-                <p style={{
-                  fontSize: '11px', fontWeight: 600, color: '#A1A1AA',
-                  textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
-                }}>
-                  Source Verification Network
-                </p>
-                <img
-                  src={pdfGraphImage}
-                  alt="Source Verification Network"
-                  style={{ width: '100%', borderRadius: '12px', display: 'block', marginBottom: '20px' }}
-                />
-                
-                {/* List of sources for the PDF since they can't click the graph */}
-                {sc.corroboration?.top_sources && sc.corroboration.top_sources.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
-                      Corroborating Articles Evaluated
-                    </p>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {sc.corroboration.top_sources.slice(0, 15).map((s, i) => (
-                        <li key={i} style={{ 
-                          fontSize: '11px', lineHeight: 1.4, padding: '10px', 
-                          background: '#F8F7F4', borderRadius: '8px', border: '1px solid #E8E5DE' 
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ 
-                              display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
-                              background: s.trusted ? '#22c55e' : '#ef4444' 
-                            }} />
-                            <strong style={{ color: '#18181B', fontSize: '12px' }}>{s.domain}</strong>
-                            <span style={{ color: s.trusted ? '#166534' : '#991B1B', fontWeight: 600 }}>
-                              {s.trusted ? 'Credible' : 'Unverified'}
-                            </span>
-                          </div>
-                          <a href={s.url} target="_blank" rel="noreferrer" style={{ color: '#1B3A6B', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                            {s.url}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Interactive graph in browser
-              <PropagationGraph sc={sc} />
-            )}
-          </div>
+          {!isVideoOnly && (
+            <div ref={graphContainerRef}>
+              {pdfGraphImage ? (
+                // Static snapshot shown during PDF generation
+                <div style={{ marginTop: '20px' }}>
+                  <p style={{
+                    fontSize: '11px', fontWeight: 600, color: '#A1A1AA',
+                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
+                  }}>
+                    Source Verification Network
+                  </p>
+                  <img
+                    src={pdfGraphImage}
+                    alt="Source Verification Network"
+                    style={{ width: '100%', borderRadius: '12px', display: 'block', marginBottom: '20px' }}
+                  />
+                  
+                  {/* List of sources for the PDF since they can't click the graph */}
+                  {sc.corroboration?.top_sources && sc.corroboration.top_sources.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: '11px', fontWeight: 600, color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
+                        Corroborating Articles Evaluated
+                      </p>
+                      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {sc.corroboration.top_sources.slice(0, 15).map((s, i) => (
+                          <li key={i} style={{ 
+                            fontSize: '11px', lineHeight: 1.4, padding: '10px', 
+                            background: '#F8F7F4', borderRadius: '8px', border: '1px solid #E8E5DE' 
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span style={{ 
+                                display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%',
+                                background: s.trusted ? '#22c55e' : '#ef4444' 
+                              }} />
+                              <strong style={{ color: '#18181B', fontSize: '12px' }}>{s.domain}</strong>
+                              <span style={{ color: s.trusted ? '#166534' : '#991B1B', fontWeight: 600 }}>
+                                {s.trusted ? 'Credible' : 'Unverified'}
+                              </span>
+                            </div>
+                            <a href={s.url} target="_blank" rel="noreferrer" style={{ color: '#1B3A6B', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                              {s.url}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Interactive graph in browser
+                <PropagationGraph sc={sc} />
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

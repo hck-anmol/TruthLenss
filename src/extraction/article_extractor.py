@@ -115,6 +115,11 @@ class ArticleExtractor:
         if image_urls:
             logger.info(f"  Found {len(image_urls)} content images for analysis")
 
+        # NOTE: Video extraction from articles is intentionally disabled.
+        # Per workflow: video analysis is only available as a standalone upload feature.
+        # Videos embedded in articles are ignored.
+        video_urls: list = []
+
         return ArticleExtraction(
             url=resolved_url,
             title=title or "Untitled Article",
@@ -127,6 +132,7 @@ class ArticleExtractor:
             word_count=word_count,
             ad_profile=ad_profile,
             image_urls=image_urls,
+            video_urls=video_urls,
         )
 
 
@@ -301,6 +307,60 @@ class ArticleExtractor:
         except Exception as e:
             logger.warning(f"  BeautifulSoup fallback failed: {e}")
             return fallback_title or "Untitled", ""
+
+    # ── Video URL Extraction ───────────────────────────────────────────────
+
+    def _extract_video_urls(self, html: str, base_url: str) -> list:
+        """
+        Scan raw HTML for embedded videos:
+          1. <video src="..."> and <source src="..."> inside <video>
+          2. YouTube / Vimeo <iframe> embeds → canonical watch URL
+        Returns a deduplicated list of up to 3 video URLs.
+        """
+        if not html:
+            return []
+
+        video_urls = []
+        seen: set = set()
+
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+
+            # ── 1. Direct <video> and <source> tags ───────────────────────
+            for tag in soup.find_all(["video", "source"]):
+                src = tag.get("src") or tag.get("data-src") or ""
+                if src and not src.startswith("data:"):
+                    abs_src = urllib.parse.urljoin(base_url, src)
+                    if abs_src not in seen:
+                        seen.add(abs_src)
+                        video_urls.append(abs_src)
+
+            # ── 2. YouTube / Vimeo iframes ────────────────────────────────
+            yt_pattern    = re.compile(r"(?:youtube\.com/embed/|youtu\.be/)([A-Za-z0-9_-]{11})", re.I)
+            vimeo_pattern = re.compile(r"vimeo\.com/(?:video/)?(\d+)", re.I)
+
+            for iframe in soup.find_all("iframe", src=True):
+                src = iframe["src"]
+
+                yt_match = yt_pattern.search(src)
+                if yt_match:
+                    watch_url = f"https://www.youtube.com/watch?v={yt_match.group(1)}"
+                    if watch_url not in seen:
+                        seen.add(watch_url)
+                        video_urls.append(watch_url)
+                    continue
+
+                vimeo_match = vimeo_pattern.search(src)
+                if vimeo_match:
+                    watch_url = f"https://vimeo.com/{vimeo_match.group(1)}"
+                    if watch_url not in seen:
+                        seen.add(watch_url)
+                        video_urls.append(watch_url)
+
+        except Exception as exc:
+            logger.warning(f"  Video URL extraction error: {exc}")
+
+        return video_urls[:3]   # cap at 3 videos per article
 
     # ── Ad Analysis ───────────────────────────────────────────────────────
 
